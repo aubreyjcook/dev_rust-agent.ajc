@@ -1,0 +1,8 @@
+[package]
+name = "routines"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+enigo.workspace = true
+rand.workspace = true

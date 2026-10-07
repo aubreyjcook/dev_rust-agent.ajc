@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 enigo = "0.6"
+rand = "0.8"

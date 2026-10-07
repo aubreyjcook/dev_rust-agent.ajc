@@ -47,6 +47,19 @@ fn main() {
                     repeat_enter_loop(ms, stop)
                 });
             }
+            "repeat_enter_jitter" => {
+                let base = args
+                    .get(0)
+                    .and_then(|s| s.parse::<u64>().ok())
+                    .unwrap_or(1000);
+                let jitter = args
+                    .get(1)
+                    .and_then(|s| s.parse::<u64>().ok())
+                    .unwrap_or(100);
+                start_task(&registry, "repeat_enter_jitter", move |stop| {
+                    repeat_enter_jitter_loop(base, jitter, stop)
+                });
+            }
             "stop" => {
                 let name = args.get(0).map(|s| s.as_str()).unwrap_or("");
                 stop_task(&registry, name);
@@ -146,4 +159,44 @@ fn repeat_enter_loop(interval_ms: u64, stop: Arc<AtomicBool>) {
         }
     }
     println!("[repeat_enter] stopped");
+}
+
+use rand::Rng;
+
+/// Press Enter at `base_ms` ± up to `jitter_ms` between presses.
+fn repeat_enter_jitter_loop(base_ms: u64, jitter_ms: u64, stop: Arc<AtomicBool>) {
+    let mut enigo = match Enigo::new(&Settings::default()) {
+        Ok(e) => e,
+        Err(e) => {
+            eprintln!("[repeat_enter_jitter] failed to init Enigo: {e}");
+            return;
+        }
+    };
+
+    let mut rng = rand::thread_rng();
+
+    while !stop.load(Ordering::Relaxed) {
+        if let Err(e) = enigo.key(Key::Return, Direction::Click) {
+            eprintln!("[repeat_enter_jitter] key press error: {e}");
+        }
+
+        // Compute a random sleep duration: base ± jitter.
+        let delta: i64 = if jitter_ms == 0 {
+            0
+        } else {
+            rng.gen_range(-(jitter_ms as i64)..=(jitter_ms as i64))
+        };
+
+        // Clamp to avoid negative sleep (which would panic).
+        let sleep_ms = ((base_ms as i64) + delta).max(1) as u64;
+
+        // Sleep in small chunks so we react to `stop` quickly.
+        let mut slept = 0;
+        while slept < sleep_ms && !stop.load(Ordering::Relaxed) {
+            let chunk = 20.min(sleep_ms - slept);
+            thread::sleep(Duration::from_millis(chunk));
+            slept += chunk;
+        }
+    }
+    println!("[repeat_enter_jitter] stopped");
 }

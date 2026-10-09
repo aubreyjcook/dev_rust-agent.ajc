@@ -1,0 +1,8 @@
+[package]
+name = "agent"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+routines = { path = "../routines" }
+agent_web = { path = "../agent_web" }

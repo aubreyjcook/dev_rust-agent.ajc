@@ -1,0 +1,7 @@
+[package]
+name = "agent_core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+routines = { path = "../routines" }

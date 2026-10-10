@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = ["agent", "agent_core"]
+
+[workspace.package]
+edition = "2021"
+version = "0.4.0"
+license = "MIT"
+
+[workspace.dependencies]
+enigo = "0.2"
+rand = "0.8"

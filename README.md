@@ -21,6 +21,16 @@ explains, in the order you will meet them, every Rust idea these versions use.
 Then read v01, run it, and move up. Each version section ends with the exact
 commands to run it.
 
+Each version also has its **own guide**, which assumes you have read the previous
+version and opens with what changed and why:
+
+| version | guide |
+|---------|-------|
+| v01 | [v01/rust-agent/README.md](v01/rust-agent/README.md) — the foundations |
+| v02 | [v02/README.md](v02/README.md) — the refactor to a trait |
+| v03 | [v03/README.md](v03/README.md) — two front ends and the browser ladder |
+| v04 | [v04/README.md](v04/README.md) — the daemon and the wire protocol |
+
 ---
 
 ## Table of contents
@@ -69,18 +79,52 @@ easy to follow: `repeat_enter`, `repeat_enter_jitter`, `stop`, `list`.
 
 ```
 dev_rust-agent.ajc/
-├── README.md              ← you are here
+├── README.md                    ← you are here: the four versions compared
 ├── .gitignore
-├── v01/rust-agent/        four independent Cargo projects;
-├── v02/                     each has its own target/ directory,
-├── v03/                     so they do not interfere with each other
+├── v01/
+│   └── rust-agent/
+│       ├── README.md            ← per-version guide
+│       └── src/main.rs
+├── v02/
+│   ├── README.md                ← per-version guide
+│   ├── agent/
+│   └── routines/
+├── v03/
+│   ├── README.md                ← per-version guide
+│   ├── agent/
+│   ├── agent_web/
+│   └── routines/
 └── v04/
+    ├── README.md                ← per-version guide
+    ├── agent/
+    ├── agent_core/
+    └── routines/
 ```
 
-Each version directory is its own [Cargo workspace](#what-is-a-workspace). You
+Each version directory is its own [Cargo workspace](#a-crate-a-package-and-a-workspace). You
 `cd` into a version to build it. Nothing is shared between versions on purpose —
 v02 does not import from v01 — so you can read one without the others, and so a
 change to v04 can never break v03.
+
+### This README, and the per-version guides
+
+There are two layers of documentation, and they are meant to be read together:
+
+| | what it covers | when to read it |
+|---|---|---|
+| **this file** | all four versions side by side, the Rust concepts they use, and how to operate each one | first, to see the arc; then as a reference |
+| **[v01/rust-agent/README.md](v01/rust-agent/README.md)** | that version's code, line by line, plus exercises | as you read v01 |
+| **[v02/README.md](v02/README.md)** | ditto, framed as a diff against v01 | as you read v02 |
+| **[v03/README.md](v03/README.md)** | ditto, framed as a diff against v02 | as you read v03 |
+| **[v04/README.md](v04/README.md)** | ditto, framed as a diff against v03 | as you read v04 |
+
+The per-version guides assume you have read the version before them. Each one
+opens with **what changed and why**, then walks the new code, then ends with
+things to try. If you want the fastest route into the project, read this file's
+[primer](#start-here-rust-in-this-project) and then
+[v01's guide](v01/rust-agent/README.md); if you already know Rust and want the
+interesting refactors, read [v02](v02/README.md), [v03](v03/README.md) and
+[v04](v04/README.md) in order.
 
 ## Start here: Rust in this project
 
@@ -480,6 +524,9 @@ without any test framework beyond `cargo test`.
 
 ### v01 — one file that types for you
 
+> **Full guide:** [v01/rust-agent/README.md](v01/rust-agent/README.md) — walks the
+> file line by line, with exercises.
+
 ```
 v01/rust-agent/
 ├── Cargo.toml
@@ -552,6 +599,9 @@ cargo run
 
 ### v02 — splitting the program into two crates
 
+> **Full guide:** [v02/README.md](v02/README.md) — the same code framed as a diff
+> against v01.
+
 ```
 v02/
 ├── Cargo.toml          workspace: members = ["agent", "routines"]
@@ -614,6 +664,9 @@ cargo run -p agent         # -p selects the package in a workspace
 ```
 
 ### v03 — a browser subroutine and a web page
+
+> **Full guide:** [v03/README.md](v03/README.md) — the browser ladder and the
+> second front end, framed as a diff against v02.
 
 ```
 v03/
@@ -695,6 +748,9 @@ cargo run -p agent -- --browser https://example.com
 Then open <http://127.0.0.1:8765/> for the dashboard.
 
 ### v04 — one process, or a daemon
+
+> **Full guide:** [v04/README.md](v04/README.md) — the daemon, the wire protocol,
+> and the registry rework, framed as a diff against v03.
 
 ```
 v04/

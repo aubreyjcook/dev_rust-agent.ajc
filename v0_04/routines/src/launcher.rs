@@ -521,7 +521,7 @@ mod tests {
     /// three rungs and then fails loudly with a reason per rung.
     #[test]
     fn ladder_tries_every_rung_then_reports_failure() {
-        let empty = std::env::temp_dir().join("v03-no-browsers-here");
+        let empty = std::env::temp_dir().join("v0_03-no-browsers-here");
         let dirs = vec![empty];
 
         assert_eq!(ladder_for(&dirs), vec![Route::Default]);
@@ -548,7 +548,7 @@ mod tests {
     /// A directory that really does contain a fake chrome.exe is discovered.
     #[test]
     fn detects_a_browser_that_is_present() {
-        let root = std::env::temp_dir().join("v03-fake-browsers");
+        let root = std::env::temp_dir().join("v0_03-fake-browsers");
         let chrome_dir = root
             .join("Google")
             .join("Chrome")

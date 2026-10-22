@@ -1,4 +1,4 @@
-# v01 — one file that types for you
+# v0_01 — one file that types for you
 
 > **New here?** Read the [root README](../../README.md) first, especially
 > [Start here: Rust in this project](../../README.md#start-here-rust-in-this-project).
@@ -6,13 +6,13 @@
 >
 > **This is the first version**, so there is no "what changed" section. If you
 > are reading the versions in order, start here. If you already know Rust and
-> want to see the interesting refactors, jump to [v02](../../v02/README.md).
+> want to see the interesting refactors, jump to [v0_02](../../v0_02/README.md).
 
 ---
 
 ## The program
 
-`v01` is a console program that presses the <kbd>Enter</kbd> key for you, on a
+`v0_01` is a console program that presses the <kbd>Enter</kbd> key for you, on a
 timer, and lets you start and stop that behaviour while it runs:
 
 ```
@@ -73,14 +73,14 @@ The file is laid out in this order, and it reads best top to bottom:
 
 | lines | what |
 |-------|------|
-| [1–7](../../v01/rust-agent/src/main.rs#L1-L7) | imports |
-| [9–15](../../v01/rust-agent/src/main.rs#L9-L15) | the two type definitions: one task, and the map of tasks |
-| [17–77](../../v01/rust-agent/src/main.rs#L17-L77) | `main`: the banner and the command loop |
-| [79–106](../../v01/rust-agent/src/main.rs#L79-L106) | `start_task`: register a task, run it on a thread |
-| [108–117](../../v01/rust-agent/src/main.rs#L108-L117) | `stop_task`: find a task, set its flag |
-| [119–128](../../v01/rust-agent/src/main.rs#L119-L128) | `list_tasks`: print the names |
-| [130–135](../../v01/rust-agent/src/main.rs#L130-L135) | `stop_all`: set every flag, for shutdown |
-| [139–202](../../v01/rust-agent/src/main.rs#L139-L202) | the two keystroke loops |
+| [1–7](../../v0_01/rust-agent/src/main.rs#L1-L8) | imports |
+| [9–15](../../v0_01/rust-agent/src/main.rs#L10-L18) | the two type definitions: one task, and the map of tasks |
+| [17–77](../../v0_01/rust-agent/src/main.rs#L20-L102) | `main`: the banner and the command loop |
+| [79–106](../../v0_01/rust-agent/src/main.rs#L97-L147) | `start_task`: register a task, run it on a thread |
+| [108–117](../../v0_01/rust-agent/src/main.rs#L149-L160) | `stop_task`: find a task, set its flag |
+| [119–128](../../v0_01/rust-agent/src/main.rs#L162-L172) | `list_tasks`: print the names |
+| [130–135](../../v0_01/rust-agent/src/main.rs#L174-L180) | `stop_all`: set every flag, for shutdown |
+| [139–202](../../v0_01/rust-agent/src/main.rs#L182-L264) | the two keystroke loops |
 
 ### The pieces
 
@@ -243,17 +243,17 @@ task's own thread, a few milliseconds later.
 A mutex becomes poisoned when a thread panics while holding it, so a panic in one
 task could take down the whole agent on the next `list`. It is a reasonable
 choice for a small program, and later versions decide differently — see
-[v02's note on lock poisoning](../../v02/README.md#why-lockunwrap-is-still-here-and-what-changes).
+[v0_02's note on lock poisoning](../../v0_02/README.md#why-lockunwrap-is-still-here-and-what-changes).
 
 ---
 
 ## Things a learner should notice
 
 These are not mistakes to fix before reading on. They are the *pressure* that
-causes v02, and noticing them is the point.
+causes v0_02, and noticing them is the point.
 
 1. **The banner lies.** The printed command list at
-   [lines 20–26](../../v01/rust-agent/src/main.rs#L20-L26) mentions four
+   [lines 20–26](../../v0_01/rust-agent/src/main.rs#L22-L27) mentions four
    commands, but the dispatcher also accepts `repeat_enter_jitter` and `exit`.
    Adding a command means updating two places that do not know about each other.
 
@@ -278,14 +278,14 @@ causes v02, and noticing them is the point.
 
 6. **The sleep loop is copy-pasted twice.** `repeat_enter_loop` and
    `repeat_enter_jitter_loop` each contain their own identical `while slept <
-   …` block. The `sleep_interruptible` function that fixes this appears in v02.
+   …` block. The `sleep_interruptible` function that fixes this appears in v0_02.
 
 7. **`use rand::Rng;` sits in the middle of the file**, at
-   [line 164](../../v01/rust-agent/src/main.rs#L164), just above the function
+   [line 164](../../v0_01/rust-agent/src/main.rs#L221), just above the function
    that needs it. Legal Rust, unusual style; later versions put imports at the
    top.
 
-Each of these is a small thing. Together they are the argument for v02:
+Each of these is a small thing. Together they are the argument for v0_02:
 **give the work a name, and give it a place to live.**
 
 ---
@@ -293,7 +293,7 @@ Each of these is a small thing. Together they are the argument for v02:
 ## Build and run
 
 ```bash
-cd v01/rust-agent
+cd v0_01/rust-agent
 cargo build
 cargo run
 ```
@@ -325,7 +325,7 @@ This version uses the **2024 edition** of Rust, which needs a recent toolchain
 rustup update
 ```
 
-or start with [v02](../../v02/README.md), which uses the 2021 edition and builds on
+or start with [v0_02](../../v0_02/README.md), which uses the 2021 edition and builds on
 older compilers.
 
 ---
@@ -336,7 +336,7 @@ The fastest way to learn from this file is to break it deliberately. In rough
 order of difficulty:
 
 1. **Add a command that does nothing.** Add `"ping" => println!("pong"),` to the
-   `match` at [line 39](../../v01/rust-agent/src/main.rs#L39). Notice you also had
+   `match` at [line 39](../../v0_01/rust-agent/src/main.rs#L49). Notice you also had
    to think about the banner at line 20 — that is pressure #1 above.
 
 2. **Make the banner honest.** Replace the three `println!` calls with a single
@@ -348,17 +348,55 @@ order of difficulty:
 
 4. **Break the deduplication.** Delete the `if reg.contains_key(name)` check and
    start `repeat_enter` twice. You now have two threads both registered under
-   `"repeat_enter"`, and `stop` can only reach one of them. This is why v04 gives
+   `"repeat_enter"`, and `stop` can only reach one of them. This is why v0_04 gives
    each task an instance name like `repeat_enter#2`.
 
 5. **Extract the sleep loop.** Pull the `while slept < …` block out of
    `repeat_enter_loop` into a function `sleep_interruptible(ms, &stop)`, and call
-   it from both loops. You have just written the function that v02 ships.
+   it from both loops. You have just written the function that v0_02 ships.
 
 6. **Give the task a name it knows.** Add a `kind: &'static str` field to
    `TaskHandle` and store `"repeat_enter"`. Now `list` can print the kind without
    you passing it. You are one step away from the `Routine` trait.
 
 When you have done a few of these — or when you would rather read the refactor
-than invent it — go to [**v02**](../../v02/README.md), where the work becomes a
+than invent it — go to [**v0_02**](../../v0_02/README.md), where the work becomes a
 value with a name.
+
+---
+
+## Roadmap for v0_02
+
+This version is finished. Here is what the next one will change, and why — the
+problems below are the ones to feel while reading this file.
+
+**The pressure.** The `start_task` signature is the bottleneck. It takes the work
+as a closure, so:
+
+- the behaviour has no name and cannot be stored, listed or reused;
+- the name is passed *separately* from the behaviour, so the two can drift;
+- cleanup (`reg.remove`) lives inside the spawn block and must be repeated by
+  every future kind of task;
+- `repeat_enter_loop` and `repeat_enter_jitter_loop` each carry their own copy of
+  the chunked sleep loop.
+
+**The plan.**
+
+1. **Turn the work into a type.** Add a `Routine` trait with `name()` and `run()`,
+   and make `BoxedRoutine = Box<dyn Routine>` the thing `start_task` accepts. The
+   closure parameter disappears.
+2. **Let the routine report its own name**, so the registry key cannot disagree
+   with the behaviour.
+3. **Move the routines into a library crate**, `routines`, in a workspace next to
+   the binary. The binary keeps the command loop and registry; the library owns
+   the keystrokes.
+4. **Extract `sleep_interruptible`** so both loops share one implementation.
+5. **Fix the cosmetic problems the split makes obvious**: imports at the top, and
+   a command list that matches the dispatcher.
+
+**What stays the same.** The stop flag, the `Arc<Mutex<…>>` registry, the
+interruptible-sleep discipline, and the four commands. v0_02 is a refactor, not a
+feature release: it should look identical to a user.
+
+**Not planned yet.** Tests, a browser command, a web front end, and a daemon —
+all of those arrive in later versions.

@@ -1,8 +1,8 @@
 //! The task registry: what is running, and how to stop it.
 //!
-//! A *task* is a running routine. In v03 the routine ran on a thread the agent
+//! A *task* is a running routine. In v0_03 the routine ran on a thread the agent
 //! started and the agent's stdout was the only place its messages appeared.
-//! In v04 the daemon has many clients, so each task captures its own recent
+//! In v0_04 the daemon has many clients, so each task captures its own recent
 //! output instead of printing into the void.
 
 use std::collections::VecDeque;

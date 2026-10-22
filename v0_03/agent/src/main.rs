@@ -1,10 +1,10 @@
-//! Agent v03 — console agent with basic web interactivity.
+//! Agent v0_03 — console agent with basic web interactivity.
 //!
 //! One command surface, two front doors: stdin and a loopback HTTP server.
 //! Both funnel into [`dispatch`], so a command behaves identically no matter
 //! where it came from.
 //!
-//! New in v03: the `open_browser` subroutine, which opens a browser by trying
+//! New in v0_03: the `open_browser` subroutine, which opens a browser by trying
 //! the system default first, then Chrome, then Firefox, landing on Google.
 
 mod console;
@@ -145,7 +145,16 @@ fn main() {
 }
 
 /// The single decision point for every command, console or web.
+///
+/// The contract is deliberately narrow: **text in, `Reply` out, no printing, no
+/// I/O**. Because it returns a value instead of printing, one function can serve
+/// the console (which prints `output`) and the web layer (which turns it into
+/// JSON and picks a status code). v0_04 pushes this idea all the way into a
+/// library.
 fn dispatch(agent: &Agent, input: &str) -> Reply {
+    // Same front end as v0_01/v0_02: the first word is the command, the rest are
+    // arguments. `args` is collected into owned `String`s so it does not borrow
+    // `input`.
     let mut parts = input.trim().split_whitespace();
     let cmd = parts.next().unwrap_or("");
     let args: Vec<String> = parts.map(str::to_string).collect();
@@ -157,10 +166,13 @@ fn dispatch(agent: &Agent, input: &str) -> Reply {
 
         "list" | "tasks" => Reply::ok(list_tasks(&agent.registry)),
 
-        // ---- the v03 browser subroutine -------------------------------------
+        // ---- the v0_03 browser subroutine ----------------------------------
+        // Several aliases, one arm: pattern alternatives need no extra syntax.
         "browser" | "browse" | "open_browser" | "open" => {
             open_browser(agent, args.first().map(String::as_str))
         }
+        // Inspect the ladder as *data*, without launching anything. This is only
+        // possible because `candidates()` decides without acting.
         "browsers" | "browser_chain" => Reply::ok(format!(
             "browser fallback ladder (tried in this order):\n  {}",
             routines::launcher::describe_ladder().join("\n  ")
@@ -195,6 +207,11 @@ fn dispatch(agent: &Agent, input: &str) -> Reply {
     }
 }
 
+/// Start the browser routine, refusing if a launch is already in flight.
+///
+/// Note the shape: the check-and-register happens under one lock, then the work
+/// is handed to a thread and this returns immediately. The reply therefore means
+/// "launched", not "finished" — which is what keeps the web request fast.
 fn open_browser(agent: &Agent, url: Option<&str>) -> Reply {
     if !agent.allow_spawn {
         return Reply::err("browser launching is disabled (started with --no-open)");
@@ -204,8 +221,13 @@ fn open_browser(agent: &Agent, url: Option<&str>) -> Reply {
 
     // One browser at a time: this is what keeps a repeated click from opening
     // a dozen windows.
+    //
+    // The extra block is load-bearing. It ends the borrow of `reg` at the closing
+    // brace, so the lock is released before the thread is spawned below. Holding
+    // it across the spawn would be a deadlock waiting to happen.
     {
         let mut reg = agent.registry.lock().unwrap_or_else(|e| e.into_inner());
+        // Any task whose name starts with `open_browser` counts as in flight.
         let busy = reg.keys().any(|k| k.starts_with("open_browser"));
         if busy {
             return Reply::err(format!(
@@ -218,12 +240,17 @@ fn open_browser(agent: &Agent, url: Option<&str>) -> Reply {
         );
     }
 
+    // `url` is borrowed from the caller, but the thread may outlive it, so take
+    // an owned copy (`map(str::to_string)` turns `Option<&str>` into
+    // `Option<String>`).
     let registry = Arc::clone(&agent.registry);
     let requested = url.map(str::to_string);
     thread::spawn(move || {
         let stop = Arc::new(AtomicBool::new(false));
+        // Explicit type annotation: from here on, only the trait matters.
         let routine: BoxedRoutine = Box::new(OpenBrowser::new(requested));
         routine.run(Arc::clone(&stop));
+        // Remove the guard so the next launch is allowed.
         registry
             .lock()
             .unwrap_or_else(|e| e.into_inner())

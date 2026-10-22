@@ -243,13 +243,23 @@ impl Runtime {
 
     /// Dispatch one command. Returns the reply and whether it was a control
     /// command that may have set the shutdown flag.
+    ///
+    /// This is v0_03's `dispatch`, moved out of a binary and into a library so
+    /// that all three front ends can share it. It still follows the same narrow
+    /// contract: **text in, `Reply` out, no printing and no transport**.
+    ///
+    /// The second return value is what lets the socket server know to close a
+    /// connection after answering: a control command may have asked the whole
+    /// daemon to stop.
     fn dispatch(&self, input: &str) -> (Reply, bool) {
         let mut parts = input.trim().split_whitespace();
         let cmd = parts.next().unwrap_or("");
         let args: Vec<String> = parts.map(str::to_string).collect();
 
         match cmd {
-            // Handshake only: proves the token is good and names the peer.
+            // Handshake only. `agentctl` sends this before anything else to
+            // answer two questions: is the token good, and does this daemon
+            // speak my protocol version?
             "hello" | "ping" => (
                 self.reply(format!(
                     "agent v{VERSION} {} ready (pid {}, api level {}, {} task(s) running)",
@@ -275,6 +285,8 @@ impl Runtime {
             }
             "list" | "tasks" => (self.reply(self.list_tasks()), false),
 
+            // Browser goes through its own function because it needs the
+            // one-launch-at-a-time guard; everything else just spawns.
             "browser" | "browse" | "open_browser" | "open" => {
                 self.dispatch_browser(args.first().map(String::as_str))
             }
@@ -308,6 +320,9 @@ impl Runtime {
                 (self.reply(format!("stopping {n} task(s)")), false)
             }
 
+            // `events [since]`: the same incremental cursor the protocol uses.
+            // 0 means "everything still buffered"; a client that knows where it
+            // got to passes that sequence number instead.
             "events" => {
                 let since = args.first().and_then(|s| s.parse().ok()).unwrap_or(0);
                 let events = self.events_since(since, 50);
@@ -322,6 +337,8 @@ impl Runtime {
                 };
                 (self.reply(text), false)
             }
+            // Which peers have connected, and how chatty each was. Useful for
+            // answering "is something else driving my agent?".
             "clients" => {
                 let clients = self.clients();
                 let text = if clients.is_empty() {
@@ -336,6 +353,10 @@ impl Runtime {
                 (self.reply(text), false)
             }
 
+            // `swap` returns the PREVIOUS value, so this reads as
+            // "set the flag, and if it was not already set, this is the first
+            // request". That is how a second `daemon_stop` avoids claiming it
+            // started a shutdown that is already under way.
             "daemon_stop" | "shutdown" | "stop_daemon" => {
                 if !self.opts.shutdown.swap(true, Ordering::SeqCst) {
                     self.record("daemon", "shutdown requested");

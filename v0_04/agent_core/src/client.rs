@@ -167,7 +167,7 @@ mod tests {
 
     #[test]
     fn probing_an_empty_directory_reports_not_running() {
-        let dir = std::env::temp_dir().join(format!("v04-client-empty-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("v0_04-client-empty-{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("mkdir");
         let dir = SessionDir::at(&dir);
         assert_eq!(Client::probe_dir(&dir), Probe::NotRunning);
@@ -182,7 +182,7 @@ mod tests {
         let port = listener.local_addr().expect("addr").port();
         drop(listener);
 
-        let dir = std::env::temp_dir().join(format!("v04-client-dead-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("v0_04-client-dead-{}", std::process::id()));
         let dir = SessionDir::at(&dir);
         let session = Session {
             port,

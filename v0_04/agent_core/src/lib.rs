@@ -1,7 +1,7 @@
 //! Agent core: everything shared between the standalone process, the daemon
 //! and the remote-control client.
 //!
-//! The split that matters in v04:
+//! The split that matters in v0_04:
 //!
 //! * [`runtime`] holds the state and the command semantics — no I/O front end.
 //! * [`server`] adapts that runtime to a loopback control socket (daemon mode).

@@ -1,7 +1,7 @@
-# v04 — one process, or a daemon
+# v0_04 — one process, or a daemon
 
-> **Read [v01](../v01/rust-agent/README.md), [v02](../v02/README.md) and
-> [v03](../v03/README.md) first.** This version reorganises everything those
+> **Read [v0_01](../v0_01/rust-agent/README.md), [v0_02](../v0_02/README.md) and
+> [v0_03](../v0_03/README.md) first.** This version reorganises everything those
 > three built; it is much easier to follow as a continuation than as a fresh
 > start.
 >
@@ -14,18 +14,18 @@
 
 ## What changed, and why
 
-v03 ended with a good property: **one `dispatch` function, two front ends**. The
+v0_03 ended with a good property: **one `dispatch` function, two front ends**. The
 console and the web panel both called it, so a command could not behave
 differently depending on which door it came through.
 
-v04 takes that property seriously and asks the obvious next question: if the
+v0_04 takes that property seriously and asks the obvious next question: if the
 front end does not matter, why should it matter *which process* it lives in?
 
 So the program learns to run two ways:
 
 | mode | started with | who can drive it |
 |------|--------------|------------------|
-| **standalone** | `agent` or `agent run` | only its own console — exactly v03's behaviour |
+| **standalone** | `agent` or `agent run` | only its own console — exactly v0_03's behaviour |
 | **daemon** | `agent daemon` | **any terminal on the machine**, via a new `agentctl` client |
 
 The daemon publishes a session file, listens on a loopback socket, and answers
@@ -33,14 +33,14 @@ commands from any number of clients. The commands themselves are unchanged.
 
 ### The diff, in one table
 
-| v03 | v04 | why |
+| v0_03 | v0_04 | why |
 |-----|-----|-----|
 | `dispatch` in `agent/src/main.rs` | `Runtime::dispatch` in `agent_core/src/runtime.rs` | a third front end needed the semantics, and `main` is the wrong place for shared logic |
 | `Routine::run(self, stop)` | `Routine::run(self, stop, log)` | output has many possible readers now, not just stdout |
 | `println!` inside routines | `log.line(…)` | a daemon's stdout is not where a remote client can see it |
 | no tests in the library | 22 unit tests in `agent_core` | the extracted crate is now worth testing |
 | tasks removed by their own thread | the registry **prunes** finished tasks | a routine that ends on its own left a dead entry behind |
-| `stop <base name>` | `stop` resolves exact names *and* unique prefixes | the v03 label bug, fixed properly |
+| `stop <base name>` | `stop` resolves exact names *and* unique prefixes | the v0_03 label bug, fixed properly |
 | 2 binaries? no — 1 | `agent` **and** `agentctl` | two roles, two front ends, one package |
 | one way to find the program | session file + token + discovery | two processes must agree on where to talk |
 | 19 tests | 53 tests, including 8 that run real processes | the pieces are now testable and worth testing |
@@ -49,7 +49,7 @@ commands from any number of clients. The commands themselves are unchanged.
 
 ## Change 1: four front ends, one dispatch
 
-This is the shape v04 moves to:
+This is the shape v0_04 moves to:
 
 ```
    console (stdin)  ─┐
@@ -116,15 +116,15 @@ daemon mode there is no console to leave, and the equivalent is `daemon_stop`.
 This is the most visible change in the routine API.
 
 ```rust
-// v03
+// v0_03
 fn run(self: Box<Self>, stop: Arc<AtomicBool>);
 
-// v04
+// v0_04
 fn run(self: Box<Self>, stop: Arc<AtomicBool>, log: LogHandle);
 ```
 
-Why does output need a trait? Because in v03 there was exactly one reader —
-whoever was looking at the agent's console — and in v04 there are many: the
+Why does output need a trait? Because in v0_03 there was exactly one reader —
+whoever was looking at the agent's console — and in v0_04 there are many: the
 daemon's log file, each connected client, and (in standalone mode) still the
 console. A routine cannot know which, so it is handed a sink:
 
@@ -194,18 +194,18 @@ the point: the routine did not get harder to write, it got *relocatable*.
 
 ## Change 3: the registry learned to forget
 
-v01 through v03 all removed a finished task from the registry **inside the task's
+v0_01 through v0_03 all removed a finished task from the registry **inside the task's
 own thread**:
 
 ```rust
 thread::spawn(move || {
     routine.run(stop);
-    registry.lock().unwrap().remove(&name);     // v02/v03
+    registry.lock().unwrap().remove(&name);     // v0_02/v0_03
 });
 ```
 
 That works right up until a routine finishes *on its own*. `open_browser` does
-exactly that: it launches a browser and returns. In the v04 rewrite, the cleanup
+exactly that: it launches a browser and returns. In the v0_04 rewrite, the cleanup
 line was dropped, and the consequence was visible:
 
 ```
@@ -263,7 +263,7 @@ that ignores its stop flag cannot hang the daemon's exit.
 ### And `stop` learned prefixes
 
 With names fixed (tasks register under the routine's name, and the parameter
-string lives in a separate display `label`), v03's bug is gone. v04 goes one
+string lives in a separate display `label`), v0_03's bug is gone. v0_04 goes one
 further: `stop` accepts an unambiguous prefix.
 
 ```rust
@@ -444,7 +444,7 @@ that something tried.
 
 ### Shutting down without a crate
 
-A background process needs to stop on <kbd>Ctrl</kbd>+<kbd>C</kbd>, and v04 has no
+A background process needs to stop on <kbd>Ctrl</kbd>+<kbd>C</kbd>, and v0_04 has no
 dependencies to help:
 
 ```rust
@@ -595,7 +595,7 @@ rather than trusted, and that standalone mode publishes nothing.
 ## The new module layout, and why each file exists
 
 ```
-v04/
+v0_04/
 ├── agent/                          the front ends
 │   ├── src/main.rs                 mode selection, console loop, daemon startup
 │   ├── src/console.rs              `agent` CLI parsing
@@ -612,7 +612,7 @@ v04/
 │   └── src/protocol.rs             wire types, JSON, framing
 └── routines/                       the subroutines
     ├── src/lib.rs                  Routine + Log traits, the routines
-    └── src/launcher.rs             the browser ladder (unchanged from v03)
+    └── src/launcher.rs             the browser ladder (unchanged from v0_03)
 ```
 
 The split between `runtime.rs` and `server.rs` is the one to internalise. Ask of
@@ -626,11 +626,11 @@ ends sharing one behaviour instead of slowly diverging.
 ## Build and run
 
 ```bash
-cd v04
+cd v0_04
 cargo build
 cargo test                                   # 53 tests, 8 of which start real processes
 
-# standalone — v03's behaviour, unchanged
+# standalone — v0_03's behaviour, unchanged
 ./target/debug/agent
 ./target/debug/agent run --no-open
 
@@ -705,6 +705,103 @@ one possible.
 
 ---
 
+## Roadmap for v0_05
+
+v0_04 is the first version that is a *service*, and the honest list of what it
+still lacks is longer than the list of what it does. These are the gaps, in the
+order they are worth closing.
+
+### 1. Mouse control — the biggest gap against the stated purpose
+
+The project's agenda is a program that controls **the keyboard and mouse**. Every
+version so far drives only the keyboard (`repeat_enter`, `repeat_enter_jitter`),
+even though `enigo` — already a dependency — can move the pointer and click.
+
+Planned work:
+
+- a `mouse_move <x> <y>` routine that eases the pointer to a position rather than
+  teleporting it, because a jump does not look like a person;
+- a `repeat_click [button] [ms]` routine built on the same interruptible-sleep
+  discipline as the keyboard ones;
+- a shared input handle so routines stop each constructing their own `Enigo` on
+  startup, which is currently duplicated in every `run`;
+- documentation of the mouse's safety implications, in the same spirit as the
+  existing "this presses real keys" warnings.
+
+The trait changes needed are small: `Routine` already receives a stop flag and a
+log sink, and a mouse routine needs nothing more.
+
+### 2. Daemon lifecycle
+
+The daemon is a *user-session* process, not a service: it does not survive logout
+and cannot be made to start automatically.
+
+- **v0_05**: a `--detach` flag that leaves it running after the terminal closes —
+  half-present already in `agentctl daemon-start`, and worth lifting into the
+  binary itself;
+- **later**: platform integration (a systemd user unit, a launchd agent, a
+  scheduled task), *documented rather than bundled*, because installing a service
+  is a decision the user should make explicitly;
+- an idle timeout, so a forgotten daemon does not hold a port forever.
+
+### 3. Output that streams
+
+`agentctl` currently learns about a task by *asking* (`events`, `list`), and each
+one-shot invocation starts its event cursor at zero. That is fine for polling and
+wrong for watching.
+
+- a `--follow` mode that holds one connection open and prints events as they
+  arrive, instead of re-connecting per command;
+- a `since` cursor persisted in a small state file, so consecutive invocations do
+  not re-print the same backlog;
+- possibly a real push: the protocol is already line-oriented, so a long-lived
+  subscriber needs no framing change — only a rule for which events a connection
+  wants.
+
+### 4. Configuration
+
+Everything is a command-line flag today. A `~/.config/rust-agent/config.toml`
+would let the session directory, preferred port and browser order persist — which
+in turn means *parsing TOML*, a good argument for the project's first real
+serialisation dependency. That decision is deliberately deferred: v0_04 has no
+dependencies, and adding one should be a version's headline, not an accident.
+
+### 5. Protocol and robustness
+
+Small and cheap, but worth recording:
+
+- `protocol.rs`'s `is_at_top_level` re-scans from the start on every candidate
+  match, so field extraction is quadratic. Irrelevant at 16 KiB, but a
+  hand-written tokeniser would be both faster and simpler to read;
+- one thread per connection with a fixed 30 s budget does not bound the number of
+  threads — a connection cap or a small thread pool is the next step;
+- the token never rotates during a daemon's lifetime; a `rotate_token` command
+  would let a long-running daemon invalidate a leaked session file.
+
+### 6. Tests
+
+The eight integration tests cover the happy path and the obvious failures. The
+gaps worth filling first:
+
+- **concurrency**: two clients issuing commands at once, asserting that the gate
+  really serialises them;
+- **a client dying mid-request**, and the daemon continuing to serve;
+- **shutdown with a running task**, asserting the task stops and the session file
+  is removed;
+- **a panicking routine**, asserting that the poisoned-lock recovery in
+  `agent_core`'s `lock` helper does what it claims.
+
+### What is deliberately *not* planned
+
+- **Exposing the socket beyond loopback.** TLS and a real authentication scheme
+  are a different project; pretending otherwise would put a remote input service
+  on a network.
+- **A GUI.** The dashboard exists; a native window would add a fourth front end
+  without proving anything new about the architecture.
+- **Renaming the program.** It is called what it is called.
+
+---
+
 ## Reference appendix
 
 Kept from the original notes because it is genuinely useful when operating the
@@ -713,10 +810,10 @@ program.
 **Starting it**
 
 ```powershell
-cd v04
+cd v0_04
 cargo build
 
-.\target\debug\agent.exe                       # standalone (v03 behaviour)
+.\target\debug\agent.exe                       # standalone (v0_03 behaviour)
 .\target\debug\agent.exe run --no-open
 .\target\debug\agent.exe daemon                # daemon
 .\target\debug\agent.exe daemon --port 46000 --session-dir C:\tmp\agent

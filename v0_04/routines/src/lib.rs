@@ -1,7 +1,7 @@
 //! Agent subroutines.
 //!
 //! A [`Routine`] is a self-contained unit of work the agent can start, track
-//! and stop. Two things matter in v04:
+//! and stop. Two things matter in v0_04:
 //!
 //! * Long-running routines poll an [`AtomicBool`] stop flag so the agent stays
 //!   responsive.

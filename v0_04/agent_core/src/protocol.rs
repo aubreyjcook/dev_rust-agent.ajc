@@ -367,19 +367,36 @@ pub fn json_bool(text: &str, key: &str) -> Option<bool> {
 
 /// Extract a top-level field's raw text, respecting string boundaries so a key
 /// name appearing inside a value cannot confuse the scan.
+///
+/// This is the fiddliest code in the repository, so it is worth reading slowly.
+/// A naive `text.find("\"cmd\"")` would also match the text `"cmd"` when it
+/// appears *inside another string*, for example:
+///
+/// ```text
+/// {"token":"sneaky \"cmd\": no","cmd":"status"}
+/// ```
+///
+/// So the scan walks candidate matches and throws away any that are not at the
+/// top level (inside a string literal). The loop is written as a search-with-
+/// resume rather than a single `find`: `search_from` advances past rejected
+/// candidates so the next `find` starts after them.
 pub fn json_raw(text: &str, key: &str) -> Option<String> {
+    // `format!` here because `find` needs the quotes around the key.
     let needle = format!("\"{key}\"");
     let mut search_from = 0usize;
 
     while let Some(offset) = text[search_from..].find(&needle) {
         let at = search_from + offset;
 
-        // Ignore matches that sit inside a string literal.
+        // Reject a match that sits inside a string literal, and resume the
+        // search just after it. Without this, the value above would win.
         if !is_at_top_level(text, at) {
             search_from = at + needle.len();
             continue;
         }
 
+        // The key must be followed by a colon; if it is not, this was some
+        // other occurrence (a bare word in a value, say), so keep looking.
         let after = text[at + needle.len()..].trim_start();
         let after = match after.strip_prefix(':') {
             Some(rest) => rest.trim_start(),
@@ -388,26 +405,34 @@ pub fn json_raw(text: &str, key: &str) -> Option<String> {
                 continue;
             }
         };
+        // `slice_value` decides where the value ends: after a closing quote for
+        // a string, or after the matching bracket for a nested container.
         return Some(slice_value(after));
     }
     None
 }
 
 /// True when position `at` is outside any string literal before it.
+///
+/// A two-state walk: `in_string` flips on unescaped quotes, and `escaped` makes
+/// sure a quote that follows a backslash does not count. It re-scans from the
+/// start each time, which is quadratic in the worst case — acceptable for
+/// control messages of a few hundred bytes, and the price of staying readable.
 fn is_at_top_level(text: &str, at: usize) -> bool {
     let mut in_string = false;
     let mut escaped = false;
+    // Only the prefix matters: we are asking about the state *at* `at`.
     for ch in text[..at].chars() {
         if in_string {
             if escaped {
-                escaped = false;
+                escaped = false; // this character is literal
             } else if ch == '\\' {
-                escaped = true;
+                escaped = true; // the next character is literal
             } else if ch == '"' {
-                in_string = false;
+                in_string = false; // closing quote
             }
         } else if ch == '"' {
-            in_string = true;
+            in_string = true; // opening quote
         }
     }
     !in_string

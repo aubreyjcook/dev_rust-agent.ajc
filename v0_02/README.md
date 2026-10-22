@@ -1,6 +1,6 @@
-# v02 — splitting the program into two crates
+# v0_02 — splitting the program into two crates
 
-> **Read [v01](../v01/rust-agent/README.md) first.** This version is a refactor, and a
+> **Read [v0_01](../v0_01/rust-agent/README.md) first.** This version is a refactor, and a
 > refactor only makes sense against the thing being refactored. If you know Rust
 > and just want the summary: *the work stopped being a closure and became a value
 > with a name.*
@@ -12,13 +12,13 @@
 
 ## What changed, and why
 
-`v02` runs the same four commands as v01 and looks the same to a user. The change
-is entirely structural, and it comes from noticing one thing in v01's file.
+`v0_02` runs the same four commands as v0_01 and looks the same to a user. The change
+is entirely structural, and it comes from noticing one thing in v0_01's file.
 
-In v01, starting a task looked like this:
+In v0_01, starting a task looked like this:
 
 ```rust
-// v01
+// v0_01
 start_task(&registry, "repeat_enter", move |stop| {
     repeat_enter_loop(ms, stop)
 });
@@ -29,10 +29,10 @@ The **what** (`repeat_enter`), the **name** (`"repeat_enter"`), and the **how**
 an anonymous closure: it has no type you can name, so it cannot be stored,
 listed, or passed anywhere else.
 
-In v02, the same call is:
+In v0_02, the same call is:
 
 ```rust
-// v02
+// v0_02
 start_task(&registry, Box::new(RepeatEnter { interval_ms: ms }));
 ```
 
@@ -44,7 +44,7 @@ That is the entire version. Everything below is the consequences.
 
 ### The diff, function by function
 
-| v01 | v02 | why |
+| v0_01 | v0_02 | why |
 |-----|-----|-----|
 | `start_task<F>(reg, name, body)` | `start_task(reg, routine: BoxedRoutine)` | the work is a type, not a closure |
 | name passed in as a `&str` | `let name = routine.name();` | the task knows its own name |
@@ -54,9 +54,9 @@ That is the entire version. Everything below is the consequences.
 | `use rand::Rng;` mid-file | imports at the top of `routines/src/lib.rs` | tidiness the split made obvious |
 | one package | a workspace with two packages | dependency versions pinned once |
 
-### What v01 "wanted" but could not express
+### What v0_01 "wanted" but could not express
 
-Three of v01's rough edges disappear on their own once the work is a value:
+Three of v0_01's rough edges disappear on their own once the work is a value:
 
 - **The banner can be honest.** Adding a routine is now two edits in two files
   that each know their own half: an `impl Routine` in the library, a `match` arm
@@ -72,7 +72,7 @@ Three of v01's rough edges disappear on their own once the work is a value:
 ## The new shape
 
 ```
-v02/
+v0_02/
 ├── Cargo.toml            workspace: members = ["agent", "routines"]
 ├── agent/
 │   ├── Cargo.toml        depends on routines
@@ -138,7 +138,7 @@ Line by line:
 `dyn Routine` is a **trait object**: the concrete type is decided at runtime, and
 the box provides the indirection that makes that possible. This is the price of
 being able to put a `RepeatEnter` and an `OpenBrowser` in the same `Vec` — and it
-is a price worth paying, as you will see in [v03](../v03/README.md).
+is a price worth paying, as you will see in [v0_03](../v0_03/README.md).
 
 ### 2. A routine is a struct plus an impl
 
@@ -179,7 +179,7 @@ Four things to notice:
 - **The match handles the failure and returns.** `Enigo::new` can fail (no
   display, no permission); the routine reports it and gives up rather than
   panicking on a background thread.
-- **The loop is identical to v01's**, except the sleep is now a call.
+- **The loop is identical to v0_01's**, except the sleep is now a call.
 
 ### 3. The extracted helper
 
@@ -232,7 +232,7 @@ fn start_task(registry: &Registry, routine: BoxedRoutine) {
 }
 ```
 
-Compare with v01's five lines of bounds. The agent now needs to know **nothing**
+Compare with v0_01's five lines of bounds. The agent now needs to know **nothing**
 about `Send`, `'static`, or keystrokes — those constraints live on the trait, and
 the concrete types only appear where they are constructed.
 
@@ -242,7 +242,7 @@ the concrete types only appear where they are constructed.
 type Registry = Arc<Mutex<HashMap<&'static str, TaskHandle>>>;
 ```
 
-v01 used `String`. v02 uses `&'static str`, matching `Routine::name`'s return
+v0_01 used `String`. v0_02 uses `&'static str`, matching `Routine::name`'s return
 type. Because the key is a string literal known at compile time, no allocation is
 needed to look a task up — and the compiler now guarantees the name lives long
 enough to be a key.
@@ -271,9 +271,9 @@ thread::spawn(move || {
 });
 ```
 
-v02 did **not** fix v01's pressure #5. The cleanup still lives inside the spawn
+v0_02 did **not** fix v0_01's pressure #5. The cleanup still lives inside the spawn
 block. It is now easier to see as a wart, because everything around it got
-cleaner — and it is still there in v03. Look for it to disappear in v04.
+cleaner — and it is still there in v0_03. Look for it to disappear in v0_04.
 
 ---
 
@@ -285,10 +285,10 @@ Three payoffs, in increasing order of importance:
    and an `impl` in the library, then one arm in the `match`.
 2. **The agent can report on things it does not understand.** `list` prints
    `routine.name()` without knowing whether it is looking at a keystroke presser
-   or (in v03) a browser launcher.
+   or (in v0_03) a browser launcher.
 3. **The library is now testable without running the program.** This version does
-   not take advantage of it — v02 has no tests at all — but the seam is what
-   makes [v03](../v03/README.md) and [v04](../v04/README.md) testable.
+   not take advantage of it — v0_02 has no tests at all — but the seam is what
+   makes [v0_03](../v0_03/README.md) and [v0_04](../v0_04/README.md) testable.
 
 Point 3 is the deep one. A `#[cfg(test)] mod tests` in a library crate is
 compiled and run by `cargo test` without any console, any keyboard, or any
@@ -299,7 +299,7 @@ whose functions can be called directly.
 
 ## The workspace, and `.workspace = true`
 
-`v02/Cargo.toml` is not a package; it is a workspace, a container for packages:
+`v0_02/Cargo.toml` is not a package; it is a workspace, a container for packages:
 
 ```toml
 [workspace]
@@ -331,13 +331,13 @@ Two consequences worth knowing:
   packages, one build cache.
 - **`cargo build` at the root builds every member.** To run just one, use
   `cargo run -p agent` — `-p` selects a package in a workspace. You will need
-  that flag in v03 and v04, which have more packages.
+  that flag in v0_03 and v0_04, which have more packages.
 
 ---
 
 ## Why `.lock().unwrap()` is still here (and what changes)
 
-v02 keeps v01's habit:
+v0_02 keeps v0_01's habit:
 
 ```rust
 let mut reg = registry.lock().unwrap();
@@ -348,7 +348,7 @@ Because a mutex becomes **poisoned** when a thread panics while holding it, this
 next `list`". For a program with no tests, no long uptime and one user, that is a
 defensible trade.
 
-[v03](../v03/README.md) and [v04](../v04/README.md) decide differently and
+[v0_03](../v0_03/README.md) and [v0_04](../v0_04/README.md) decide differently and
 ship a helper instead:
 
 ```rust
@@ -366,12 +366,12 @@ thread panicked" is not a reason to refuse to work.
 ## Build and run
 
 ```bash
-cd v02
+cd v0_02
 cargo build
 cargo run -p agent          # -p: pick the package in the workspace
 ```
 
-The commands are identical to v01:
+The commands are identical to v0_01:
 
 ```
 repeat_enter 500              press Enter every 500 ms
@@ -381,15 +381,15 @@ stop repeat_enter             ask it to stop
 quit                          exit
 ```
 
-> ⚠️ Still real keystrokes into the focused window. Same caution as v01: use a
+> ⚠️ Still real keystrokes into the focused window. Same caution as v0_01: use a
 > long interval, keep the terminal focused, `stop` before switching windows.
 
 ### Seeing the refactor
 
 The commands behave identically, so there is nothing to *watch*. To see the
-change, read the two dispatch arms side by side — v01's
-[line 46](../v01/rust-agent/src/main.rs#L46) and v02's
-[line 41](agent/src/main.rs#L41) — and notice that the second one is shorter while
+change, read the two dispatch arms side by side — v0_01's
+[line 46](../v0_01/rust-agent/src/main.rs#L51) and v0_02's
+[line 41](agent/src/main.rs#L93) — and notice that the second one is shorter while
 saying more.
 
 There are still no tests, and still no command-line options.
@@ -412,7 +412,7 @@ There are still no tests, and still no command-line options.
    ```
 
    Then add one arm in `agent/src/main.rs`. Count how many places you had to
-   touch — and compare with how many v01 would have needed.
+   touch — and compare with how many v0_01 would have needed.
 
 2. **Make the compiler complain about visibility.** Remove `pub` from
    `RepeatEnter::interval_ms` and build. Read error `E0451` carefully; it is one
@@ -437,13 +437,54 @@ There are still no tests, and still no command-line options.
    ```
 
    You have just written the first test for this project. (This test ships in
-   [v03](../v03/routines/src/lib.rs).)
+   [v0_03](../v0_03/routines/src/lib.rs).)
 
 5. **Break the supertrait bound.** Change `pub trait Routine: Send + 'static` to
    `pub trait Routine` and see where the errors land. They will point at
    `thread::spawn` in the agent, not at the trait — which is a good lesson in how
    bounds propagate to the point of use.
 
-When the shapes here feel natural, go to [**v03**](../v03/README.md), where the
+When the shapes here feel natural, go to [**v0_03**](../v0_03/README.md), where the
 program grows a second front end and a routine that talks to the operating
 system.
+
+---
+
+## Roadmap for v0_03
+
+This version is finished. Here is what the next one will change.
+
+**The pressure.** Two things now stick out:
+
+- **One front end.** `dispatch` lives in `main` and produces nothing but printed
+  output, so anything else that wanted to run a command would have to duplicate
+  the `match`. The program is one interface away from being drivable from
+  somewhere other than its own console.
+- **Nothing but keystrokes.** Every routine so far presses keys. There is no
+  routine that talks to the *operating system*, and none that can fail in a way
+  worth reporting — which means no experience with `Result`-returning work, or
+  with falling back between alternatives.
+
+**The plan.**
+
+1. **Add a browser routine** that opens a URL by trying the system default
+   browser, then Chrome, then Firefox, stopping at the first that actually
+   starts. It introduces two ideas worth a version of their own: a *ladder* of
+   candidates held as data, and "success" defined as more than "spawn returned
+   `Ok`".
+2. **Return replies instead of printing them.** Change `dispatch` to
+   `fn dispatch(agent, input) -> Reply`, with `Reply { ok, output }`.
+3. **Add a second front end**: a standard-library HTTP server on loopback,
+   serving a dashboard and a JSON API. It cannot depend on the binary, so the
+   agent hands it a *boxed closure* — `Dispatch` — and the web crate never learns
+   what a command is.
+4. **Make the ladder inspectable** with a `browsers` command, possible only
+   because deciding (a pure `Vec`) is separate from acting.
+5. **Guard the one dangerous command**: at most one browser launch in flight.
+
+**What stays the same.** The `Routine` trait, `sleep_interruptible`, the registry
+and the stop flag. Both new front ends must call the same `dispatch` — if they
+ever diverge, the version has failed.
+
+**Not planned yet.** Tests beyond the two in `routines`, the `stop`-by-name bug
+this version introduces, and any thought of running outside this process.

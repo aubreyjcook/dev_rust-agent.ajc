@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn a_directory_this_test_can_write_is_reported_writable() {
-        let dir = env::temp_dir().join(format!("v04-session-test-{}", process::id()));
+        let dir = env::temp_dir().join(format!("v0_04-session-test-{}", process::id()));
         let session_dir = SessionDir::at(&dir);
         assert!(session_dir.is_writable(), "temp dir should be writable");
 

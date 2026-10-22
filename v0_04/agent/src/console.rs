@@ -1,4 +1,4 @@
-//! Command-line options and terminal output for the v04 agent.
+//! Command-line options and terminal output for the v0_04 agent.
 
 use std::path::PathBuf;
 
@@ -7,9 +7,9 @@ use agent_core::{SessionDir, DEFAULT_PORT};
 /// How the process is being started.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
-    /// v03 behaviour: one process, commands typed at its own console.
+    /// v0_03 behaviour: one process, commands typed at its own console.
     Standalone,
-    /// v04: a control socket other terminals can reach.
+    /// v0_04: a control socket other terminals can reach.
     Daemon,
 }
 
@@ -95,7 +95,7 @@ options:
 ";
 
 pub fn usage(role: Option<Role>) -> String {
-    let mut out = String::from("agent v04 - standalone or daemon, same commands either way\n\n");
+    let mut out = String::from("agent v0_04 - standalone or daemon, same commands either way\n\n");
     out.push_str("usage:\n  agent [options]              standalone: commands on this console\n");
     out.push_str("  agent run [options]          same thing, explicitly\n");
     out.push_str("  agent daemon [options]       system-wide daemon: any terminal can drive it\n");
@@ -117,7 +117,7 @@ pub fn banner(opts: &Options, session_dir: &SessionDir) {
     if opts.quiet {
         return;
     }
-    println!("=== Agent v04 ({}) ===", opts.role.as_str());
+    println!("=== Agent v0_04 ({}) ===", opts.role.as_str());
     println!("  open_browser -> default browser, then Chrome, then Firefox");
     println!("  landing page -> {}", routines::GOOGLE_URL);
     println!("  session dir  -> {} (from {})", session_dir.path().display(), session_dir.source());

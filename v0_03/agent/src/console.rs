@@ -1,4 +1,4 @@
-//! Command-line options and startup banner for the v03 agent.
+//! Command-line options and startup banner for the v0_03 agent.
 
 use routines::GOOGLE_URL;
 
@@ -64,7 +64,7 @@ impl Options {
 }
 
 pub fn banner(opts: &Options) {
-    println!("=== Agent v03 (web-enabled) ===");
+    println!("=== Agent v0_03 (web-enabled) ===");
     println!("  open_browser -> default browser, then Chrome, then Firefox");
     println!("  landing page -> {GOOGLE_URL}");
     if opts.no_web {
@@ -81,7 +81,7 @@ pub fn banner(opts: &Options) {
 }
 
 pub const USAGE: &str = "\
-agent v03 - console agent with loopback web control
+agent v0_03 - console agent with loopback web control
 
 usage:
   agent [options]

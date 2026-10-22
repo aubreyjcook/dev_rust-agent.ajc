@@ -146,14 +146,29 @@ impl Attempt {
 }
 
 /// Open `url` (defaulting to Google), walking default -> Chrome -> Firefox.
+///
+/// The control flow *is* the design, and it reads well because of three rules:
+///
+/// 1. **Return as soon as a rung works.** No flags, no `break`.
+/// 2. **Collect failures rather than discarding them.** `attempts` records why a
+///    rung failed; `skipped` records rungs that were never tried because the
+///    browser is not installed. Both surface in the error.
+/// 3. **Distinguish the two kinds of "no".** "Not installed" and "tried and
+///    failed" mean different things to whoever reads the message.
 pub fn open(url: Option<&str>) -> Result<LaunchReport, LaunchError> {
     let url = target_url(url);
     let mut attempts: Vec<Attempt> = Vec::new();
     let mut skipped: Vec<String> = Vec::new();
 
+    // `candidates()` is a plain `Vec`, so the loop owns it.
     for (route, candidate) in candidates() {
+        // `&candidate` instead of `candidate`: matching by reference keeps the
+        // item usable and lets `path` be a `&PathBuf`. With `candidate` the
+        // first arm would move the value and the compiler would refuse.
         match &candidate {
             Candidate::DefaultShell => {
+                // Route the URL through the OS so the registered default
+                // browser handles it.
                 let cmdline = shell_command_line(&url);
                 match run_default_shell(&url) {
                     Ok(()) => {
@@ -453,7 +468,13 @@ fn run_default_shell(url: &str) -> Result<(), String> {
 }
 
 /// Rungs 2 and 3: exec a known browser directly.
+///
+/// "Success" here means more than "spawn returned Ok" — a broken install can
+/// start a process that dies immediately. So the child is polled for about a
+/// second; staying alive is the evidence that the browser really started.
 fn run_direct(path: &PathBuf, url: &str) -> Result<(), String> {
+    // All three streams are null: a browser writes to its own windows, and its
+    // output must not mix into the agent's console.
     let mut child: Child = Command::new(path)
         .arg(url)
         .stdin(Stdio::null())
@@ -465,6 +486,11 @@ fn run_direct(path: &PathBuf, url: &str) -> Result<(), String> {
     // A browser that is really starting stays alive. One that dies instantly
     // (bad install, locked profile, missing libraries) does not, and that is
     // our signal to try the next rung.
+    //
+    // `try_wait` is the non-blocking "has it exited?" call:
+    //   Ok(None)          -> still running  (good: assume it worked)
+    //   Ok(Some(status))  -> it exited      (bad: try the next rung)
+    //   Err(e)            -> we cannot tell (treat as bad)
     for _ in 0..10 {
         std::thread::sleep(Duration::from_millis(120));
         match child.try_wait() {
@@ -479,6 +505,7 @@ fn run_direct(path: &PathBuf, url: &str) -> Result<(), String> {
             Err(e) => return Err(format!("could not poll process: {e}")),
         }
     }
+    // Survived the whole polling window: treat it as a successful launch.
     Ok(())
 }
 
@@ -521,7 +548,7 @@ mod tests {
     /// three rungs and then fails loudly with a reason per rung.
     #[test]
     fn ladder_tries_every_rung_then_reports_failure() {
-        let empty = std::env::temp_dir().join("v03-no-browsers-here");
+        let empty = std::env::temp_dir().join("v0_03-no-browsers-here");
         let dirs = vec![empty];
 
         assert_eq!(ladder_for(&dirs), vec![Route::Default]);
@@ -548,7 +575,7 @@ mod tests {
     /// A directory that really does contain a fake chrome.exe is discovered.
     #[test]
     fn detects_a_browser_that_is_present() {
-        let root = std::env::temp_dir().join("v03-fake-browsers");
+        let root = std::env::temp_dir().join("v0_03-fake-browsers");
         let chrome_dir = root
             .join("Google")
             .join("Chrome")

@@ -3,22 +3,22 @@
 A small Rust "agent": a program that presses keys, opens browsers, and gets
 driven from a console, a browser tab, or another terminal on the machine.
 
-It is written **four times** on purpose. `v01` through `v04` are four stages of
+It is written **four times** on purpose. `v0_01` through `v0_04` are four stages of
 the same program growing up, and each stage is a self-contained, runnable
 project. If you are learning Rust, read them in order; every version works, so
 you can run any of them at any point.
 
 | version | the program became… | the Rust you learn |
 |---------|--------------------|--------------------|
-| [v01](#v01--one-file-that-types-for-you) | one file that presses Enter on a timer | structs, closures, `Arc`/`Mutex`, threads |
-| [v02](#v02--splitting-the-program-into-two-crates) | two crates, with a `Routine` trait | traits, trait objects, workspaces, `.workspace = true` |
-| [v03](#v03--a-browser-subroutine-and-a-web-page) | a browser launcher plus a web control panel | `Option`/`Result` chains, `include_str!`, parsing bytes |
-| [v04](#v04--one-process-or-a-daemon) | a background daemon any terminal can command | binary targets, IPC, session files, real integration tests |
+| [v0_01](#v0_01--one-file-that-types-for-you) | one file that presses Enter on a timer | structs, closures, `Arc`/`Mutex`, threads |
+| [v0_02](#v0_02--splitting-the-program-into-two-crates) | two crates, with a `Routine` trait | traits, trait objects, workspaces, `.workspace = true` |
+| [v0_03](#v0_03--a-browser-subroutine-and-a-web-page) | a browser launcher plus a web control panel | `Option`/`Result` chains, `include_str!`, parsing bytes |
+| [v0_04](#v0_04--one-process-or-a-daemon) | a background daemon any terminal can command | binary targets, IPC, session files, real integration tests |
 
 **Where to start:** if you have never written Rust, read
 [Start here: Rust in this project](#start-here-rust-in-this-project) first — it
 explains, in the order you will meet them, every Rust idea these versions use.
-Then read v01, run it, and move up. Each version section ends with the exact
+Then read v0_01, run it, and move up. Each version section ends with the exact
 commands to run it.
 
 Each version also has its **own guide**, which assumes you have read the previous
@@ -26,10 +26,10 @@ version and opens with what changed and why:
 
 | version | guide |
 |---------|-------|
-| v01 | [v01/rust-agent/README.md](v01/rust-agent/README.md) — the foundations |
-| v02 | [v02/README.md](v02/README.md) — the refactor to a trait |
-| v03 | [v03/README.md](v03/README.md) — two front ends and the browser ladder |
-| v04 | [v04/README.md](v04/README.md) — the daemon and the wire protocol |
+| v0_01 | [v0_01/rust-agent/README.md](v0_01/rust-agent/README.md) — the foundations |
+| v0_02 | [v0_02/README.md](v0_02/README.md) — the refactor to a trait |
+| v0_03 | [v0_03/README.md](v0_03/README.md) — two front ends and the browser ladder |
+| v0_04 | [v0_04/README.md](v0_04/README.md) — the daemon and the wire protocol |
 
 ---
 
@@ -39,15 +39,16 @@ version and opens with what changed and why:
 - [Repository layout](#repository-layout)
 - [Start here: Rust in this project](#start-here-rust-in-this-project)
 - [The four versions](#the-four-versions)
-  - [v01 — one file that types for you](#v01--one-file-that-types-for-you)
-  - [v02 — splitting the program into two crates](#v02--splitting-the-program-into-two-crates)
-  - [v03 — a browser subroutine and a web page](#v03--a-browser-subroutine-and-a-web-page)
-  - [v04 — one process, or a daemon](#v04--one-process-or-a-daemon)
+  - [v0_01 — one file that types for you](#v0_01--one-file-that-types-for-you)
+  - [v0_02 — splitting the program into two crates](#v0_02--splitting-the-program-into-two-crates)
+  - [v0_03 — a browser subroutine and a web page](#v0_03--a-browser-subroutine-and-a-web-page)
+  - [v0_04 — one process, or a daemon](#v0_04--one-process-or-a-daemon)
 - [Reading the diff: what changed at each step](#reading-the-diff-what-changed-at-each-step)
 - [Operating the program](#operating-the-program)
 - [Everything that went wrong](#everything-that-went-wrong)
 - [Repository and development](#repository-and-development)
 - [Glossary](#glossary)
+- [Architecture overview](ARCHITECTURE.md)
 
 ---
 
@@ -64,12 +65,12 @@ forever does not stop you from typing `list`.
 
 Everything between those two halves is where the versions differ:
 
-- **v01** puts both halves in one `main.rs`, using a closure for the back end.
-- **v02** moves the back end into a second crate and gives it a trait, so a
+- **v0_01** puts both halves in one `main.rs`, using a closure for the back end.
+- **v0_02** moves the back end into a second crate and gives it a trait, so a
   routine is a *thing you can pass around*.
-- **v03** adds a second front end — a tiny web server — and a browser routine
+- **v0_03** adds a second front end — a tiny web server — and a browser routine
   that tries three browsers in order.
-- **v04** adds a third front end, a socket, so the back end can live in a
+- **v0_04** adds a third front end, a socket, so the back end can live in a
   background process and other terminals can command it.
 
 The same four commands survive all four versions, which makes the comparison
@@ -80,21 +81,23 @@ easy to follow: `repeat_enter`, `repeat_enter_jitter`, `stop`, `list`.
 ```
 dev_rust-agent.ajc/
 ├── README.md                    ← you are here: the four versions compared
+├── ARCHITECTURE.md              ← system overview, invariants, decision log
+├── agent-instructions.md        ← the project's own brief: goals and conventions
 ├── .gitignore
-├── v01/
+├── v0_01/
 │   └── rust-agent/
 │       ├── README.md            ← per-version guide
 │       └── src/main.rs
-├── v02/
+├── v0_02/
 │   ├── README.md                ← per-version guide
 │   ├── agent/
 │   └── routines/
-├── v03/
+├── v0_03/
 │   ├── README.md                ← per-version guide
 │   ├── agent/
 │   ├── agent_web/
 │   └── routines/
-└── v04/
+└── v0_04/
     ├── README.md                ← per-version guide
     ├── agent/
     ├── agent_core/
@@ -103,28 +106,30 @@ dev_rust-agent.ajc/
 
 Each version directory is its own [Cargo workspace](#a-crate-a-package-and-a-workspace). You
 `cd` into a version to build it. Nothing is shared between versions on purpose —
-v02 does not import from v01 — so you can read one without the others, and so a
-change to v04 can never break v03.
+v0_02 does not import from v0_01 — so you can read one without the others, and so a
+change to v0_04 can never break v0_03.
 
-### This README, and the per-version guides
+### This README, the per-version guides, and the architecture overview
 
-There are two layers of documentation, and they are meant to be read together:
+Three layers of documentation, meant to be read together:
 
 | | what it covers | when to read it |
 |---|---|---|
 | **this file** | all four versions side by side, the Rust concepts they use, and how to operate each one | first, to see the arc; then as a reference |
-| **[v01/rust-agent/README.md](v01/rust-agent/README.md)** | that version's code, line by line, plus exercises | as you read v01 |
-| **[v02/README.md](v02/README.md)** | ditto, framed as a diff against v01 | as you read v02 |
-| **[v03/README.md](v03/README.md)** | ditto, framed as a diff against v02 | as you read v03 |
-| **[v04/README.md](v04/README.md)** | ditto, framed as a diff against v03 | as you read v04 |
+| **[ARCHITECTURE.md](ARCHITECTURE.md)** | the system view: data flow, package graph, the invariants, and a decision log | once you know the versions; before making a change |
+| **[v0_01/rust-agent/README.md](v0_01/rust-agent/README.md)** | that version's code, line by line, plus exercises | as you read v0_01 |
+| **[v0_02/README.md](v0_02/README.md)** | ditto, framed as a diff against v0_01 | as you read v0_02 |
+| **[v0_03/README.md](v0_03/README.md)** | ditto, framed as a diff against v0_02 | as you read v0_03 |
+| **[v0_04/README.md](v0_04/README.md)** | ditto, framed as a diff against v0_03 | as you read v0_04 |
 
 The per-version guides assume you have read the version before them. Each one
 opens with **what changed and why**, then walks the new code, then ends with
-things to try. If you want the fastest route into the project, read this file's
+things to try and a **roadmap for the next version**. If you want the fastest
+route into the project, read this file's
 [primer](#start-here-rust-in-this-project) and then
-[v01's guide](v01/rust-agent/README.md); if you already know Rust and want the
-interesting refactors, read [v02](v02/README.md), [v03](v03/README.md) and
-[v04](v04/README.md) in order.
+[v0_01's guide](v0_01/rust-agent/README.md); if you already know Rust and want the
+interesting refactors, read [v0_02](v0_02/README.md), [v0_03](v0_03/README.md) and
+[v0_04](v0_04/README.md) in order.
 
 ## Start here: Rust in this project
 
@@ -140,11 +145,11 @@ When people say "crate" casually they usually mean a package, and so does this
 README.
 
 A **workspace** is a `Cargo.toml` listing several packages that share one
-`target/` directory and one `Cargo.lock`. v02, v03 and v04 are workspaces; v01
+`target/` directory and one `Cargo.lock`. v0_02, v0_03 and v0_04 are workspaces; v0_01
 is a single package.
 
 ```toml
-# v02/Cargo.toml
+# v0_02/Cargo.toml
 [workspace]
 resolver = "2"
 members = ["agent", "routines"]       # the folders that are workspace members
@@ -159,7 +164,7 @@ rand = "0.8"
 ```
 
 A member then opts in with `.workspace = true`, which is why you see this in
-`v02/routines/Cargo.toml` and nowhere else:
+`v0_02/routines/Cargo.toml` and nowhere else:
 
 ```toml
 [dependencies]
@@ -172,9 +177,9 @@ The point: four packages pin `enigo` in *one* place, so they cannot drift apart.
 > **Editions.** A Cargo.toml says `edition = "2021"` or `"2024"`. That is not the
 > Rust version you have installed; it selects which edition of the language
 > rules your code is compiled under (editions change in small, mostly
-> backward-incompatible ways every three years). v01 uses the 2024 edition; v02
+> backward-incompatible ways every three years). v0_01 uses the 2024 edition; v0_02
 > onwards uses 2021. Both are fine — the later versions simply do not need
-> anything newer. If your toolchain is older than 1.85, v01 will refuse to build;
+> anything newer. If your toolchain is older than 1.85, v0_01 will refuse to build;
 > use a recent `rustup` and all four work.
 
 ### Values, mutation, and `let`
@@ -226,7 +231,7 @@ let body = move |stop| repeat_enter_loop(ms, stop);   // `move` = take `ms` in
 the current function, so it cannot borrow locals — it has to own them.
 
 A closure that is *accepted as a parameter* is written as a generic type with
-bounds. This is v01's `start_task`, which takes the work as a closure:
+bounds. This is v0_01's `start_task`, which takes the work as a closure:
 
 ```rust
 fn start_task<F>(registry: &Registry, name: &str, body: F)
@@ -243,7 +248,7 @@ The three bounds are the price of `thread::spawn`:
 - `Send` — "safe to move to another thread".
 - `'static` — "borrows nothing that could die before the thread does".
 
-From v02 onwards this same slot is filled by a `Box<dyn Routine>` instead, which
+From v0_02 onwards this same slot is filled by a `Box<dyn Routine>` instead, which
 is the subject of the next section. *(Note that `-> ()` is the explicit way to
 write "returns nothing". A generic bound like this works in argument position;
 you cannot write `impl FnOnce` on a struct field — if you needed to store a
@@ -289,7 +294,7 @@ if let Some(h) = reg.get(name) {
 
 ### `Box<dyn Trait>` — one variable, many behaviours
 
-This is the heart of v02 onwards. Suppose you want to store "a unit of work"
+This is the heart of v0_02 onwards. Suppose you want to store "a unit of work"
 without listing every kind of work:
 
 ```rust
@@ -342,8 +347,8 @@ drop(reg);                               // … release it (or let it fall out o
 
 **Lock poisoning.** If a thread panics while holding a lock, Rust marks the
 mutex "poisoned" and every later `.lock()` returns an `Err`. `.unwrap()` would
-then crash a second thread because a *different* thread failed earlier. v03 and
-v04 refuse that trade and recover the data instead:
+then crash a second thread because a *different* thread failed earlier. v0_03 and
+v0_04 refuse that trade and recover the data instead:
 
 ```rust
 pub fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -383,7 +388,7 @@ pub struct TaskInfo { pub name: String, /* … */ }
 
 `derive` asks the compiler to write boring code for you: `Debug` enables
 `{:?}` printing, `Clone` gives `.clone()`, `PartialEq`/`Eq` enable `==`.
-v03 and v04 also hand-write `impl fmt::Display` and `impl Error` for their
+v0_03 and v0_04 also hand-write `impl fmt::Display` and `impl Error` for their
 error types, which is what makes an error printable with `{e}` *and* usable
 with `?`.
 
@@ -398,7 +403,7 @@ readable `String`. The `?` then returns early if it was an error. Rust has no
 exceptions; errors are ordinary values that travel up through return types, and
 `?` is the shorthand that keeps the happy path readable.
 
-You meet this in v02 as well, where `stop_task` turns a missing name into a
+You meet this in v0_02 as well, where `stop_task` turns a missing name into a
 message the user can act on:
 
 ```rust
@@ -410,7 +415,7 @@ match reg.get(name) {
 
 ### Reading bytes without a parser library
 
-v03 and v04 parse HTTP and JSON by hand. That involves:
+v0_03 and v0_04 parse HTTP and JSON by hand. That involves:
 
 - `line.split_whitespace()`, `split_once('?')` — cheap text chopping.
 - `u8::from_str_radix(hex, 16)` — decoding `%2F` escapes.
@@ -418,7 +423,7 @@ v03 and v04 parse HTTP and JSON by hand. That involves:
   invalid" rather than failing.
 - Walk-the-string state machines that track `in_string` and `escaped` so that a
   quote inside a value does not end the value. You will see this in
-  `v04/agent_core/src/protocol.rs`; it is the fiddliest code in the repository
+  `v0_04/agent_core/src/protocol.rs`; it is the fiddliest code in the repository
   and the best small exercise in careful indexing.
 
 ### `cfg!`, `#[cfg(...)]`, and cross-platform code
@@ -455,7 +460,7 @@ use agent_core::{Runtime, SessionDir};
 Inside a module you rename things with `as`:
 
 ```rust
-use json::{string as json_string};   // in v04's protocol.rs
+use json::{string as json_string};   // in v0_04's protocol.rs
 ```
 
 That rename exists because `json_string` was ambiguous with a *reader* of the
@@ -464,7 +469,7 @@ same name — a real problem the compiler caught, described in
 
 ### `include_str!` — embedding a file in the binary
 
-v03's dashboard is a real HTML file that is compiled *into* the executable:
+v0_03's dashboard is a real HTML file that is compiled *into* the executable:
 
 ```rust
 fn dashboard_html(spawning: bool) -> String {
@@ -499,12 +504,12 @@ sides when it fails.
 
 ### Integration tests: running the real binaries
 
-Unit tests can only see inside the crate. v04 needs more: it needs to start a
+Unit tests can only see inside the crate. v0_04 needs more: it needs to start a
 real daemon process and talk to it. That is an **integration test** — a file in
 `tests/` compiled as its own crate, which can only use the public API:
 
 ```rust
-// v04/agent/tests/daemon.rs
+// v0_04/agent/tests/daemon.rs
 fn agent_bin() -> &'static str { env!("CARGO_BIN_EXE_agent") }
 
 let child = Command::new(agent_bin())
@@ -522,18 +527,18 @@ without any test framework beyond `cargo test`.
 
 ## The four versions
 
-### v01 — one file that types for you
+### v0_01 — one file that types for you
 
-> **Full guide:** [v01/rust-agent/README.md](v01/rust-agent/README.md) — walks the
+> **Full guide:** [v0_01/rust-agent/README.md](v0_01/rust-agent/README.md) — walks the
 > file line by line, with exercises.
 
 ```
-v01/rust-agent/
+v0_01/rust-agent/
 ├── Cargo.toml
 └── src/main.rs        202 lines, everything in one place
 ```
 
-**What it does.** `v01` is a friendly little program that presses the Enter key
+**What it does.** `v0_01` is a friendly little program that presses the Enter key
 for you, on a timer, optionally with random variation so the timing does not look
 mechanical. It reads commands from the console:
 
@@ -572,9 +577,9 @@ where
 }
 ```
 
-That generic `F` is the seed of v02's trait. Both express "some unit of work";
+That generic `F` is the seed of v0_02's trait. Both express "some unit of work";
 the closure version is simpler, and the trait version is more powerful. Seeing
-why someone would switch from one to the other is the whole lesson of v02.
+why someone would switch from one to the other is the whole lesson of v0_02.
 
 **Limitations you can feel.** The behaviour of a task lives inside a closure, so
 it cannot be named, listed, or stored. Cleaning up after a task means repeating
@@ -584,7 +589,7 @@ toolchain, this is also the least portable version to build.
 **Run it**
 
 ```bash
-cd v01/rust-agent
+cd v0_01/rust-agent
 cargo build
 cargo run
 # then type:  repeat_enter 500
@@ -597,13 +602,13 @@ cargo run
 > Start it with a long interval, keep a terminal focused, and `stop` it before
 > switching windows.
 
-### v02 — splitting the program into two crates
+### v0_02 — splitting the program into two crates
 
-> **Full guide:** [v02/README.md](v02/README.md) — the same code framed as a diff
-> against v01.
+> **Full guide:** [v0_02/README.md](v0_02/README.md) — the same code framed as a diff
+> against v0_01.
 
 ```
-v02/
+v0_02/
 ├── Cargo.toml          workspace: members = ["agent", "routines"]
 ├── agent/src/main.rs   114 lines — decide and track
 └── routines/src/lib.rs  79 lines — do the work
@@ -628,10 +633,10 @@ crate that the **binary** crate depends on.
 3. **The agent stops knowing what a routine is.** Compare the two dispatchers:
 
    ```rust
-   // v01: behaviour is a closure written at the call site
+   // v0_01: behaviour is a closure written at the call site
    start_task(&registry, "repeat_enter", move |stop| repeat_enter_loop(ms, stop));
 
-   // v02: behaviour is a value with a name
+   // v0_02: behaviour is a value with a name
    start_task(&registry, Box::new(RepeatEnter { interval_ms: ms }));
    ```
 
@@ -645,10 +650,10 @@ crate that the **binary** crate depends on.
 
 - Adding a routine means writing a struct and an `impl` — no change to the agent.
 - `agent` can print a task's name without knowing its type.
-- The library can be tested *without starting the program*. v02 does not take
+- The library can be tested *without starting the program*. v0_02 does not take
   advantage of that (it has no tests at all — see
   [Repository and development](#repository-and-development)), but the seam is
-  exactly what makes v04's library testable.
+  exactly what makes v0_04's library testable.
 
 **Rust worth pausing on.** `impl Routine for RepeatEnter` has to satisfy the
 trait's bounds, which is why you see `pub struct RepeatEnter { pub interval_ms: u64 }`
@@ -657,19 +662,19 @@ with public fields: constructing it from the `agent` crate requires visibility.
 **Run it**
 
 ```bash
-cd v02
+cd v0_02
 cargo build
 cargo run -p agent         # -p selects the package in a workspace
 # repeat_enter 500 / list / stop repeat_enter / quit
 ```
 
-### v03 — a browser subroutine and a web page
+### v0_03 — a browser subroutine and a web page
 
-> **Full guide:** [v03/README.md](v03/README.md) — the browser ladder and the
-> second front end, framed as a diff against v02.
+> **Full guide:** [v0_03/README.md](v0_03/README.md) — the browser ladder and the
+> second front end, framed as a diff against v0_02.
 
 ```
-v03/
+v0_03/
 ├── Cargo.toml
 ├── agent/
 │   ├── src/main.rs         command dispatch, task registry, wiring
@@ -719,7 +724,7 @@ v03/
 - **Embedding an asset** with `include_str!`.
 - **Parsing bytes.** Percent-decoding, query strings, and headers, by hand.
 - **A second front end.** `main.rs` wires stdin and HTTP into one `dispatch`
-  function, which is the first appearance of an idea v04 leans on hard: *one
+  function, which is the first appearance of an idea v0_04 leans on hard: *one
   place decides what a command means, regardless of where it came from*.
 
 **Design details worth copying.**
@@ -734,7 +739,7 @@ v03/
 **Run it**
 
 ```bash
-cd v03
+cd v0_03
 cargo build
 cargo run -p agent                       # console + web on http://127.0.0.1:8765/
 cargo run -p agent -- --port 9000        # different port
@@ -747,13 +752,13 @@ cargo run -p agent -- --browser https://example.com
 
 Then open <http://127.0.0.1:8765/> for the dashboard.
 
-### v04 — one process, or a daemon
+### v0_04 — one process, or a daemon
 
-> **Full guide:** [v04/README.md](v04/README.md) — the daemon, the wire protocol,
-> and the registry rework, framed as a diff against v03.
+> **Full guide:** [v0_04/README.md](v0_04/README.md) — the daemon, the wire protocol,
+> and the registry rework, framed as a diff against v0_03.
 
 ```
-v04/
+v0_04/
 ├── Cargo.toml
 ├── agent/
 │   ├── src/main.rs          mode selection + both front ends
@@ -771,18 +776,18 @@ v04/
 │   └── src/protocol.rs      newline-delimited JSON over loopback TCP
 └── routines/
     ├── src/lib.rs           routines now report through a Log sink
-    └── src/launcher.rs      the same fallback ladder as v03
+    └── src/launcher.rs      the same fallback ladder as v0_03
 ```
 
 **What it does.** The agent can now run two ways:
 
 | mode | started with | who can drive it |
 |------|--------------|------------------|
-| **standalone** | `agent` or `agent run` | only its own console — exactly v03's behaviour |
+| **standalone** | `agent` or `agent run` | only its own console — exactly v0_03's behaviour |
 | **daemon** | `agent daemon` | **any terminal on the machine**, via `agentctl` |
 
-**Why this is the biggest version.** v03 already had the key idea — the runtime
-does not care where a command came from. v04 turns that into an architecture:
+**Why this is the biggest version.** v0_03 already had the key idea — the runtime
+does not care where a command came from. v0_04 turns that into an architecture:
 
 ```
    console ─┐
@@ -810,9 +815,9 @@ over the socket.)*
 - **Trait evolution.** `Routine::run` grew a parameter:
 
   ```rust
-  // v03
+  // v0_03
   fn run(self: Box<Self>, stop: Arc<AtomicBool>);
-  // v04
+  // v0_04
   fn run(self: Box<Self>, stop: Arc<AtomicBool>, log: LogHandle);
   ```
 
@@ -870,11 +875,11 @@ a browser as you. There is no elevation, no service registration, and no TLS.
 **Run it**
 
 ```bash
-cd v04
+cd v0_04
 cargo build
 cargo test                                   # 53 tests, including real processes
 
-# standalone (v03 behaviour)
+# standalone (v0_03 behaviour)
 ./target/debug/agent
 ./target/debug/agent run --no-open
 
@@ -893,7 +898,7 @@ cargo test                                   # 53 tests, including real processe
 
 ## Reading the diff: what changed at each step
 
-| | v01 | v02 | v03 | v04 |
+| | v0_01 | v0_02 | v0_03 | v0_04 |
 |---|---|---|---|---|
 | **packages** | 1 | 2 | 3 | 4 |
 | **files** | 1 | 2 | 5 | 14 |
@@ -906,14 +911,14 @@ cargo test                                   # 53 tests, including real processe
 
 Step by step:
 
-- **v01 → v02: "behaviour as a value".** The closure in `start_task` becomes
+- **v0_01 → v0_02: "behaviour as a value".** The closure in `start_task` becomes
   `Box<dyn Routine>`. Adding a routine stops touching the agent. A workspace
   appears so two packages share dependency versions.
-- **v02 → v03: "more than one way in, and more than one browser".** A second
+- **v0_02 → v0_03: "more than one way in, and more than one browser".** A second
   front end (HTTP) appears, and `dispatch()` becomes the single decision point.
   The browser ladder introduces the "try things in order, report every failure"
   pattern. `include_str!` embeds the dashboard so there is no asset to deploy.
-- **v03 → v04: "more than one process".** The runtime moves into `agent_core`
+- **v0_03 → v0_04: "more than one process".** The runtime moves into `agent_core`
   and grows a socket. Routines stop printing and start logging, because output
   now has many possible readers. Tasks learn to prune themselves. Tests stop
   being only unit tests and start spawning real daemons.
@@ -932,29 +937,29 @@ do when…".
 ### Prerequisites
 
 - A Rust toolchain (`rustup` is the easy path). All four versions work on stable
-  Rust; v01's edition 2024 needs roughly 1.85 or newer.
+  Rust; v0_01's edition 2024 needs roughly 1.85 or newer.
 - Windows, macOS or Linux. Anything platform-specific is behind `#[cfg]`.
-- For `v01`–`v04` keyboard routines: a desktop session. They synthesise real
+- For `v0_01`–`v0_04` keyboard routines: a desktop session. They synthesise real
   keystrokes into the focused window, so they do nothing useful in a
   headless/SSH session.
 
 ### Build once per version
 
 ```bash
-cd v04          # or v01/rust-agent, v02, v03
+cd v0_04          # or v0_01/rust-agent, v0_02, v0_03
 cargo build            # debug build in target/debug/
 cargo build --release  # optimised build in target/release/
 cargo test             # run that version's tests
 ```
 
-Run a workspace binary with `-p` (v02 onwards):
+Run a workspace binary with `-p` (v0_02 onwards):
 
 ```bash
-cargo run -p agent                 # v02/v03: the agent
+cargo run -p agent                 # v0_02/v0_03: the agent
 cargo run -p agent -- --port 9000  # note the `--`: everything after it is the program's own argument
 ```
 
-In v04 there are two binaries, so `-p agent` alone is ambiguous:
+In v0_04 there are two binaries, so `-p agent` alone is ambiguous:
 
 ```bash
 cargo run -p agent --bin agent -- daemon
@@ -962,10 +967,10 @@ cargo run -p agent --bin agentctl -- status
 ./target/debug/agentctl status     # or just use the built binary directly
 ```
 
-### v01 — the single-file agent
+### v0_01 — the single-file agent
 
 ```bash
-cd v01/rust-agent
+cd v0_01/rust-agent
 cargo run
 ```
 
@@ -980,18 +985,18 @@ quit                          exit
 There is no `stopall`, no browser command, and no web page. Tasks self-remove
 when they stop.
 
-### v02 — the same agent, two crates
+### v0_02 — the same agent, two crates
 
 ```bash
-cd v02
+cd v0_02
 cargo run -p agent
 ```
 
-Identical console commands to v01. The difference is internal; if you are
-following the tutorial, the way to "see" v02 is to open
-`v02/routines/src/lib.rs` and `v02/agent/src/main.rs` side by side.
+Identical console commands to v0_01. The difference is internal; if you are
+following the tutorial, the way to "see" v0_02 is to open
+`v0_02/routines/src/lib.rs` and `v0_02/agent/src/main.rs` side by side.
 
-### v03 — agent plus web control panel
+### v0_03 — agent plus web control panel
 
 **Console commands**
 
@@ -1033,7 +1038,7 @@ curl -X POST -d "cmd=list" http://127.0.0.1:8765/api/cmd
 Replies are JSON: `{"ok":true,"cmd":"…","output":"…"}`. A rejected command is
 `400`; a browser launch that arrives while another is in flight is `429`.
 
-### v04 — standalone or daemon
+### v0_04 — standalone or daemon
 
 **`agent` (the program)**
 
@@ -1155,7 +1160,7 @@ AGENT_SESSION_DIR=/tmp/agent-b agentctl status
 | `could not bind the control socket` | the port is taken by something else | `--port 46000`, or omit `--port` to walk the default range |
 | `stop` says a prefix "matches 2 tasks" | two routines share the prefix | use the full name, shown in the message and in `list` |
 | keyboard routines do nothing | no focused desktop window, or the process is not allowed to send input | run it in a normal desktop session, focus the target window first |
-| v01 fails to build on an old toolchain | edition 2024 | `rustup update`, or start with v02 |
+| v0_01 fails to build on an old toolchain | edition 2024 | `rustup update`, or start with v0_02 |
 | `cargo build` cannot reach crates.io | offline/sandboxed environment | `cargo build --offline` with a warm cargo cache (see below) |
 
 Two environment notes:
@@ -1163,7 +1168,7 @@ Two environment notes:
 - **`--offline`.** If the machine cannot reach crates.io but has built these
   projects before, `cargo build --offline` works from the local cache. This is
   how the repository was built and tested during development.
-- **`AGENT_SESSION_DIR`** (v04 only) overrides session-file discovery for both
+- **`AGENT_SESSION_DIR`** (v0_04 only) overrides session-file discovery for both
   the agent and `agentctl` — the cleanest way to run isolated instances, or to
   work somewhere `%LOCALAPPDATA%` is not writable.
 
@@ -1175,7 +1180,7 @@ Bugs are the best documentation, because they show what the types could not.
 These were all found by *running* the programs, not by reading them — which is
 itself the lesson.
 
-**v03**
+**v0_03**
 
 1. **`/api/browser` dispatched `/open_browser`.** A leading slash turned a valid
    command into `unknown command`. The handler had been written by copying the
@@ -1193,7 +1198,7 @@ itself the lesson.
 4. **A doubled `bye`** — `quit` printed a reply *and* the loop printed its own
    farewell. Fix: treat `quit` as a loop-level command, not a dispatcher command.
 
-**v04**
+**v0_04**
 
 5. **The handshake command did not exist.** `agentctl` sent `hello`; the runtime
    answered `unknown command: hello`, so every client concluded the daemon was
@@ -1210,10 +1215,10 @@ itself the lesson.
    forcing a naming decision is a feature.
 8. **`stop repeat_enter` failed** because tasks registered under a pretty label
    (`repeat_enter 30000ms`) rather than the routine's name. Fix: register under
-   the routine name — what v02 and v03 did — and keep the parameter string as a
+   the routine name — what v0_02 and v0_03 did — and keep the parameter string as a
    separate display label. Then add *prefix* resolution, so `stop repeat` works
    when unambiguous and is refused with the candidate list when not.
-9. **Finished tasks were never removed.** v02/v03 removed a task from the
+9. **Finished tasks were never removed.** v0_02/v0_03 removed a task from the
    registry inside the task's own thread; the daemon rewrite dropped that, so
    `open_browser` (which completes on its own) stayed in `list` forever. Fix:
    the registry prunes any task whose thread has finished, before every read.
@@ -1239,10 +1244,10 @@ itself the lesson.
 dev_rust-agent.ajc/
 ├── README.md
 ├── .gitignore
-├── v01/rust-agent/     standalone package
-├── v02/                workspace: agent, routines
-├── v03/                workspace: agent, routines, agent_web
-└── v04/                workspace: agent, routines, agent_core
+├── v0_01/rust-agent/     standalone package
+├── v0_02/                workspace: agent, routines
+├── v0_03/                workspace: agent, routines, agent_web
+└── v0_04/                workspace: agent, routines, agent_core
 ```
 
 Each version carries its own `Cargo.toml`, its own `Cargo.lock`, and its own
@@ -1255,20 +1260,20 @@ ignored.
 |--------------|-------|
 | add a new routine (either version) | `vNN/routines/src/lib.rs` — a struct plus `impl Routine` |
 | change how a browser is found or launched | `vNN/routines/src/launcher.rs` |
-| add a command | v03: `dispatch()` in `agent/src/main.rs`; v04: `dispatch()` in `agent_core/src/runtime.rs` |
-| change the web panel | `v03/agent_web/src/dashboard.html` (and `lib.rs` for routes/API) |
-| change the wire protocol | `v04/agent_core/src/protocol.rs` (bump `API_LEVEL` if shapes change) |
-| change how a daemon is discovered | `v04/agent_core/src/session.rs` |
-| change `agentctl`'s behaviour | `v04/agent/src/bin/agentctl.rs` |
+| add a command | v0_03: `dispatch()` in `agent/src/main.rs`; v0_04: `dispatch()` in `agent_core/src/runtime.rs` |
+| change the web panel | `v0_03/agent_web/src/dashboard.html` (and `lib.rs` for routes/API) |
+| change the wire protocol | `v0_04/agent_core/src/protocol.rs` (bump `API_LEVEL` if shapes change) |
+| change how a daemon is discovered | `v0_04/agent_core/src/session.rs` |
+| change `agentctl`'s behaviour | `v0_04/agent/src/bin/agentctl.rs` |
 
-**Tests.** `cargo test` inside a version directory. Counts: v03 has 19, v04 has
-53 (including 8 integration tests that start real processes). v01 and v02 have
+**Tests.** `cargo test` inside a version directory. Counts: v0_03 has 19, v0_04 has
+53 (including 8 integration tests that start real processes). v0_01 and v0_02 have
 no tests — they are the versions where you are meant to be reading, not
 regression-testing.
 
 **Conventions this codebase follows**
 
-- No dependency is added without a reason; v04 adds none at all, using `std::net`,
+- No dependency is added without a reason; v0_04 adds none at all, using `std::net`,
   hand-written JSON, and `#[cfg]`-gated OS calls.
 - Errors are values: `Result`/`Option` with `?`, and hand-written `Display`/`Error`.
 - Anything shared across threads is `Arc<Mutex<…>>` behind a `lock()` helper that
@@ -1282,12 +1287,12 @@ regression-testing.
 | term | meaning here |
 |------|--------------|
 | **agent** | the program, in any version |
-| **daemon** | the v04 agent running as a background process that other terminals can command |
+| **daemon** | the v0_04 agent running as a background process that other terminals can command |
 | **routine** | a unit of work the agent can start and stop (`repeat_enter`, `open_browser`, …) |
 | **task** | a routine that is currently running, and its entry in the registry |
 | **registry** | the shared map of running tasks to their stop flags |
 | **subroutine** | "routine", from the command's point of view — `open_browser` is a subroutine |
-| **control socket** | the loopback TCP port the v04 daemon listens on |
+| **control socket** | the loopback TCP port the v0_04 daemon listens on |
 | **session file** | `session.json` — the port and token a client needs to reach a daemon |
 | **session directory** | the folder holding `session.json`, discovered rather than assumed |
 | **token** | the random secret in the session file, checked on every request |

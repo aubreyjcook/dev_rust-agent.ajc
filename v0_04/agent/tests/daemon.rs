@@ -1,7 +1,7 @@
 //! End-to-end tests for the daemon/client split.
 //!
 //! These run the real binaries: a daemon process, then `agentctl` against it.
-//! That is the whole point of v04 — the transport, the session file, the
+//! That is the whole point of v0_04 — the transport, the session file, the
 //! handshake and the task registry are only proven together.
 
 use std::path::{Path, PathBuf};
@@ -28,7 +28,7 @@ struct Harness {
 impl Harness {
     fn new(tag: &str) -> Self {
         let root = std::env::temp_dir().join(format!(
-            "v04-it-{tag}-{}-{}",
+            "v0_04-it-{tag}-{}-{}",
             std::process::id(),
             Instant::now().elapsed().as_nanos()
         ));

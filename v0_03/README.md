@@ -1,7 +1,7 @@
-# v03 — a browser subroutine and a web page
+# v0_03 — a browser subroutine and a web page
 
-> **Read [v01](../v01/rust-agent/README.md) and [v02](../v02/README.md) first.** This version
-> builds directly on v02's `Routine` trait; if that trait is not yet clear, go
+> **Read [v0_01](../v0_01/rust-agent/README.md) and [v0_02](../v0_02/README.md) first.** This version
+> builds directly on v0_02's `Routine` trait; if that trait is not yet clear, go
 > back, because the rest of this file assumes it.
 >
 > For the Rust concepts themselves, see
@@ -13,7 +13,7 @@
 
 ## What changed, and why
 
-v02 had one way in (the console) and two routines that both pressed keys. v03
+v0_02 had one way in (the console) and two routines that both pressed keys. v0_03
 adds two things that each pull the design in a new direction:
 
 1. **A browser subroutine** — `browser` opens a browser by trying three in order.
@@ -27,8 +27,8 @@ The second one is the interesting change, because it forces a question that had
 not come up before: **where does "what a command means" live now that two things
 need to know it?**
 
-v02's answer would have been "in `main`'s `match`". But the web crate cannot see
-inside `main`, and it must not depend on the `agent` crate. The answer v03 lands
+v0_02's answer would have been "in `main`'s `match`". But the web crate cannot see
+inside `main`, and it must not depend on the `agent` crate. The answer v0_03 lands
 on is a small, portable type:
 
 ```rust
@@ -40,7 +40,7 @@ and the web layer never learns what a command is.
 
 ### The diff, module by module
 
-| v02 | v03 | why |
+| v0_02 | v0_03 | why |
 |-----|-----|-----|
 | `routines/src/lib.rs` | `+ routines/src/launcher.rs` | the ladder is ~350 lines; it deserved its own file |
 | no browser capability | `OpenBrowser` + `launcher::open` | the new feature |
@@ -49,8 +49,8 @@ and the web layer never learns what a command is.
 | two packages | three: `agent`, `routines`, `agent_web` | the web layer needs its own crate |
 | — | `Dispatch`, `StatusFn`, `Reply`, `AgentStatus` | dependency inversion (below) |
 | — | `include_str!("dashboard.html")` | the UI ships inside the binary |
-| 0 tests | 19 tests | the seam v02 created is finally used |
-| `stop` matches the task name | `stop` matches a display label (a bug) | fixed in v04, see [the label bug](#change-3-dispatch-got-a-signature-and-tasks-got-labels) |
+| 0 tests | 19 tests | the seam v0_02 created is finally used |
+| `stop` matches the task name | `stop` matches a display label (a bug) | fixed in v0_04, see [the label bug](#change-3-dispatch-got-a-signature-and-tasks-got-labels) |
 
 ---
 
@@ -251,7 +251,7 @@ That is why `agent_web` does **not** depend on `agent`:
 
 ### Replies became values
 
-v02 printed inside its `match`. v03 returns:
+v0_02 printed inside its `match`. v0_03 returns:
 
 ```rust
 pub struct Reply {
@@ -274,8 +274,8 @@ let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, config.port))?;
 
 `Ipv4Addr::LOCALHOST` is `127.0.0.1`: reachable only from this machine. This is
 not a detail. The API can start routines and launch browsers, so a routable bind
-would let anyone on the network drive the agent. v03 has no authentication, which
-is acceptable *because of this line*. (v04 adds a token as well, because a socket
+would let anyone on the network drive the agent. v0_03 has no authentication, which
+is acceptable *because of this line*. (v0_04 adds a token as well, because a socket
 other local users might reach deserves one.)
 
 ### The HTTP server in about 200 lines
@@ -365,8 +365,8 @@ fn dispatch(agent: &Agent, input: &str) -> Reply {
 }
 ```
 
-This is v02's `match`, promoted out of the loop into a named function with a
-contract: *text in, `Reply` out, no printing, no I/O*. v04 moves this function
+This is v0_02's `match`, promoted out of the loop into a named function with a
+contract: *text in, `Reply` out, no printing, no I/O*. v0_04 moves this function
 into its own crate and calls it from three front ends without changing its shape.
 
 Note the alias spelling: `"browser" | "browse" | "open_browser" | "open"` in one
@@ -374,7 +374,7 @@ arm. Pattern alternatives need no extra syntax.
 
 ### Task labels, and the bug that ships
 
-v03 starts tasks through a helper that builds a *display label*:
+v0_03 starts tasks through a helper that builds a *display label*:
 
 ```rust
 fn start_task(agent: &Agent, label: String, routine: BoxedRoutine) -> Reply {
@@ -386,8 +386,8 @@ fn start_task(agent: &Agent, label: String, routine: BoxedRoutine) -> Reply {
 and `start_named` then decides on a unique instance name, allowing `name`,
 `name#2`, `name#3`, … so you can run two jitter routines with different timings.
 
-This is also where v03 **introduces a bug that v04 has to fix**. Look at what
-ends up as the registry key: in v03's `start_named` it is the `label`, not the
+This is also where v0_03 **introduces a bug that v0_04 has to fix**. Look at what
+ends up as the registry key: in v0_03's `start_named` it is the `label`, not the
 routine's `name`. So the task is registered as `repeat_enter 500`, and:
 
 ```
@@ -399,14 +399,14 @@ no such running task: 'repeat_enter'
 ```
 
 The lesson is about identifiers, and it outlives this project: **use one
-identifier for the key and the message, or the two will drift.** v04's fix
+identifier for the key and the message, or the two will drift.** v0_04's fix
 (register under the routine name, keep the label for display, then allow
 unambiguous prefixes) is described in
-[v04 — the registry learned to forget](../v04/README.md#change-3-the-registry-learned-to-forget).
+[v0_04 — the registry learned to forget](../v0_04/README.md#change-3-the-registry-learned-to-forget).
 
 ### Lock poisoning stopped being fatal
 
-v02 used `registry.lock().unwrap()`. v03 switches the hot paths to:
+v0_02 used `registry.lock().unwrap()`. v0_03 switches the hot paths to:
 
 ```rust
 registry.lock().unwrap_or_else(|e| e.into_inner())
@@ -415,7 +415,7 @@ registry.lock().unwrap_or_else(|e| e.into_inner())
 A mutex is *poisoned* when a thread panics while holding it, and `.unwrap()`
 would then crash the next thread to touch it. `into_inner()` recovers the data
 instead. The reasoning: a partially-updated registry is more useful than a dead
-agent, and "some other thread panicked" is not the user's problem. v04 turns
+agent, and "some other thread panicked" is not the user's problem. v0_04 turns
 this into a one-line helper used everywhere.
 
 ---
@@ -423,7 +423,7 @@ this into a one-line helper used everywhere.
 ## The workspace grew a member
 
 ```
-v03/
+v0_03/
 ├── Cargo.toml            members = ["agent", "routines", "agent_web"]
 ├── agent/                binary: wiring, dispatch, registry, CLI
 ├── agent_web/            library: HTTP server, JSON, dashboard
@@ -455,9 +455,9 @@ as a **constraint** that improved the code:
   them — and you can verify that by hand: `curl` and the console give the same
   answer for `status`.
 
-v04 takes this constraint seriously enough to move `dispatch` into a library and
+v0_04 takes this constraint seriously enough to move `dispatch` into a library and
 add a third door. The question to carry forward is: *what is the smallest
-interface a front end needs in order to drive this program?* v03's answer is one
+interface a front end needs in order to drive this program?* v0_03's answer is one
 function and one struct.
 
 ---
@@ -465,7 +465,7 @@ function and one struct.
 ## Build and run
 
 ```bash
-cd v03
+cd v0_03
 cargo build
 cargo run -p agent                        # console + web on http://127.0.0.1:8765/
 cargo run -p agent -- --port 9000         # `--` separates cargo's args from the program's
@@ -521,9 +521,9 @@ quit | exit                    exit
    `curl -i "http://127.0.0.1:8765/api/cmd?cmd=nope"` and read the status line.
    A `Reply::err` became HTTP 400 in exactly one place. Find it.
 
-6. **Fix the v03 bug early.** Change `start_named` to register under `name` while
+6. **Fix the v0_03 bug early.** Change `start_named` to register under `name` while
    keeping `label` for display, then confirm `stop repeat_enter` works. Compare
-   your diff with what v04 ends up with.
+   your diff with what v0_04 ends up with.
 
 ---
 
@@ -583,3 +583,49 @@ curl.exe -X POST -d "cmd=repeat_enter 500" http://127.0.0.1:8765/api/cmd
   other task, but it is not a repeating loop.
 - No new dependencies: the HTTP server is `std::net`. In an offline environment,
   build with `cargo build --offline` against a warm cargo cache.
+
+---
+
+## Roadmap for v0_04
+
+This version is finished. Here is what the next one will change.
+
+**The pressure.** Three problems, in increasing order of size:
+
+- **A bug this version introduced.** Tasks are registered under their display
+  label (`repeat_enter 500`), not the routine's name, so `stop repeat_enter`
+  fails. The registry key and the user-facing name have to be the same thing.
+- **Silent stale state.** A task that finishes on its own (as `open_browser`
+  does) leaves its entry behind, because cleanup only happens on the path the
+  task thread controls.
+- **One process.** Everything runs inside one console. If that console closes,
+  the agent is gone — even though the work it can do (press keys, open browsers)
+  would be useful from any terminal on the machine.
+
+**The plan.**
+
+1. **Fix the name/label split.** Register under the routine's name; keep the
+   parameter string in a separate display label. Then allow *unambiguous
+   prefixes*, so `stop repeat` works when only one `repeat_*` task is running,
+   and is refused with the candidate list when it is not.
+2. **Let the registry prune itself.** Ask each thread whether it has finished
+   (`JoinHandle::is_finished`) before every read, instead of trusting the task to
+   clean up. State that describes a process should be derived from the process.
+3. **Extract the runtime into `agent_core`**, so the command semantics are a
+   library rather than part of `main`.
+4. **Add a third front end**: a loopback TCP socket, plus a session file so a
+   separate `agentctl` process can find it, and a token so another local user
+   cannot drive it.
+5. **Give routines a log sink** instead of letting them print, because in a
+   daemon there are many possible readers of a routine's output.
+6. **Test the real thing**: integration tests that spawn a daemon and drive it
+   with the real client binary.
+
+**What stays the same.** The `Routine` trait's shape, the browser ladder's
+order, `sleep_interruptible`, and the narrow `dispatch` contract from v0_03.
+v0_04 changes *where* the runtime lives and *how* many front ends feed it, not
+what a command means.
+
+**Not planned yet.** Mouse control, persistence across logout, streaming output,
+and authentication beyond a shared token — see the roadmap for v0_05 in the
+[v0_04 guide](../v0_04/README.md#roadmap-for-v0_05).

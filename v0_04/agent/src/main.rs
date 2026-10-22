@@ -1,6 +1,6 @@
-//! Agent v04 — one program, two ways to run.
+//! Agent v0_04 — one program, two ways to run.
 //!
-//! * `agent` / `agent run` — **standalone**: exactly the v03 experience, a
+//! * `agent` / `agent run` — **standalone**: exactly the v0_03 experience, a
 //!   process that reads commands from its own console and exits when you quit.
 //! * `agent daemon` — **daemon**: publishes a loopback control socket and a
 //!   session file, then serves commands from any terminal on the machine via
